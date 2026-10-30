@@ -88,6 +88,23 @@ public class IncludeEvaluatorTests(TestFactory factory) : IntegrationTest(factor
         actualSql.Should().Be(expectedSql);
     }
 
+    [Fact]
+    public void DoesNothing_GivenIncludeString()
+    {
+        var spec = new Specification<Company>();
+        spec.Query
+            .Include(nameof(Company.Country));
+
+        var actual = _evaluator.GetQuery(DbContext.Companies, spec);
+        var actualSql = GetQueryString(DbContext, actual);
+
+        // IncludeStringEvaluator applies include strings.
+        var expected = DbContext.Companies.AsQueryable();
+        var expectedSql = GetQueryString(DbContext, expected);
+
+        actualSql.Should().Be(expectedSql);
+    }
+
 
     [Fact(Skip = "EF6 include evaluator fails for multiple include chains [Fati Iseni, 15/06/2025]")]
     public void QueriesMatch_GivenThenIncludeExpression()
