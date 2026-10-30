@@ -73,5 +73,6 @@ Preconditions:
 
 - `include-then-include` has one chain. [EF6 include chains](./ef6-include-chains.md) drives a second.
 - Each query opens a fresh context, so a navigation holds only what that query's own `Include` loaded. One shared context would fill navigations from earlier queries and hide a missing include.
-- A run waits while the test suite holds the shared lock. A long pause before the first line is the lock.
+- A run waits while the test suite holds the shared lock, and the first run of a consumer `verify build` hasn't built builds it first. A long pause before the first line is one of those.
+- A consumer from a tree with #11's DbSet extensions also prints [DbSet read extensions](./dbset-read-extensions.md)'s `dbset-` lines after `with-specification-projected`, so a diff of a tree from before #11 with one after shows them as added.
 - `Globex Bergen` has no products, so `include-then-include` prints `Globex Bergen: ` with nothing after the colon.

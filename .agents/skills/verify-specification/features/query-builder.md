@@ -36,11 +36,11 @@ Preconditions:
 
   | File | Since #8 | Before #8 |
   |---|---|---|
-  | `QueryThroughInterface.cs` | `error CS1061` on each line marked `QUERY`, then `build: exit 1` | `build: exit 0` |
-  | `SpecificationWithoutQuery.cs` | `build: exit 0` | `error CS0535` for `ISpecification<Company>.Query`, then `build: exit 1` |
-  | `ExplicitQuery.cs` | `error CS0539` on the line marked `QUERY`, then `build: exit 1` | `build: exit 0` |
+  | `QueryThroughInterface.cs` | `build: exit 1`, then `error CS1061` on each line marked `QUERY` | `build: exit 0` |
+  | `SpecificationWithoutQuery.cs` | `build: exit 0` | `build: exit 1`, then `error CS0535` for `ISpecification<Company>.Query` |
+  | `ExplicitQuery.cs` | `build: exit 1`, then `error CS0539` on the line marked `QUERY` | `build: exit 0` |
 
-- **Docs.** After `verify build "$C"` of any consumer, print the two members' entries from the core library's XML docs:
+- **Docs.** After a `verify build "$C"` that ends `build: exit 0`, such as the Classes step's, print the two members' entries from the core library's XML docs:
 
   ```bash
   sed -n '/name="P:Ardalis.Specification.Specification`[12].Query"/,/<\/member>/p' "$C/bin/Debug/net9.0/Ardalis.Specification.xml"

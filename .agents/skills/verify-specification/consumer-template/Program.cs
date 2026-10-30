@@ -177,7 +177,7 @@ static class Shop
         await Print<Company>("with-specification-projected", async (_, db) => string.Join(", ", await db.Companies.WithSpecification(Spec<Company, string>(q => { q.OrderBy(c => c.Name); q.Select(c => c.Name); })).ToListAsync()));
 #if DBSET_READS
         // #11's DbSet extensions, with the specifications the EF Core consumer runs. The ! on default and null keeps
-        // their warning to Probes.cs, and changes no binding.
+        // their warning to with-dbset-reads/DbSetProbes.cs, and changes no binding.
         await Print<Company>("dbset-first", async (_, db) => Show((await db.Companies.FirstOrDefaultAsync(Reads.CompanyNamed("Globex")))?.Name));
         await Print<Company>("dbset-first-missing", async (_, db) => Show((await db.Companies.FirstOrDefaultAsync(Reads.CompanyNamed("Nope")))?.Name));
         await Print<Company>("dbset-first-projected", async (_, db) => Show(await db.Companies.FirstOrDefaultAsync(Reads.CountryOf("Initech"))));
