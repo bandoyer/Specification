@@ -18,27 +18,27 @@ public static class IncludeExtensions
         _ = info ?? throw new ArgumentNullException(nameof(info));
 
         var exp = source.Expression as MethodCallExpression;
-        var arg = exp.Arguments[0] as ConstantExpression;
+        var arg = exp!.Arguments[0] as ConstantExpression;
 
         string previousPropertyName;
-        if (arg.Value is string)
+        if (arg!.Value is string)
         {
-            previousPropertyName = arg.Value.ToString();
+            previousPropertyName = arg.Value.ToString()!;
         }
         else
         {
             // System.Data.Entity.Core.Objects.Span is an internal class, so here's some reflection to get to the previous property.
 
-            var propertyInfo = arg.Value.GetType().GetProperty("SpanList", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            var spanList = propertyInfo.GetValue(arg.Value);
+            var propertyInfo = arg.Value!.GetType().GetProperty("SpanList", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var spanList = propertyInfo!.GetValue(arg.Value);
 
             // Get the first item of the span list
             propertyInfo = propertyInfo.PropertyType.GetProperty("Item");
-            var spanPath = propertyInfo.GetValue(spanList, new object[] { 0 });
+            var spanPath = propertyInfo!.GetValue(spanList, new object[] { 0 });
 
-            var fieldInfo = spanPath.GetType().GetField("Navigations", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            var navigations = fieldInfo.GetValue(spanPath) as List<string>;
-            previousPropertyName = string.Join(".", navigations);
+            var fieldInfo = spanPath!.GetType().GetField("Navigations", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var navigations = fieldInfo!.GetValue(spanPath) as List<string>;
+            previousPropertyName = string.Join(".", navigations!);
         }
 
         var propertyName = GetPropertyName(info.LambdaExpression);

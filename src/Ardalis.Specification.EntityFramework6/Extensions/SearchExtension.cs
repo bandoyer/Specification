@@ -18,7 +18,7 @@ public static class SearchExtension
     /// <returns></returns>
     public static IQueryable<T> Search<T>(this IQueryable<T> source, IEnumerable<SearchExpressionInfo<T>> criterias)
     {
-        Expression expr = null;
+        Expression? expr = null;
         var parameter = Expression.Parameter(typeof(T), "x");
 
         foreach (var criteria in criterias)
@@ -35,8 +35,8 @@ public static class SearchExtension
 
             var likeExpression = Expression.Call(
                                     null,
-                                    like,
-                                    (propertySelector as LambdaExpression)?.Body,
+                                    like!,
+                                    (propertySelector as LambdaExpression)?.Body!,
                                     Expression.Constant(searchTerm));
 
             expr = expr == null ? (Expression)likeExpression : Expression.OrElse(expr, likeExpression);

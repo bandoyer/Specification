@@ -17,7 +17,7 @@ public class OrderEvaluator : IEvaluator, IInMemoryEvaluator
                 throw new DuplicateOrderChainException();
             }
 
-            IOrderedQueryable<T> orderedQuery = null;
+            IOrderedQueryable<T>? orderedQuery = null;
             foreach (var orderExpression in specification.OrderExpressions)
             {
                 if (orderExpression.OrderType == OrderTypeEnum.OrderBy)
@@ -30,11 +30,11 @@ public class OrderEvaluator : IEvaluator, IInMemoryEvaluator
                 }
                 else if (orderExpression.OrderType == OrderTypeEnum.ThenBy)
                 {
-                    orderedQuery = Queryable.ThenBy((dynamic)orderedQuery, (dynamic)RemoveConvert(orderExpression.KeySelector));
+                    orderedQuery = Queryable.ThenBy((dynamic)orderedQuery!, (dynamic)RemoveConvert(orderExpression.KeySelector));
                 }
                 else if (orderExpression.OrderType == OrderTypeEnum.ThenByDescending)
                 {
-                    orderedQuery = Queryable.ThenByDescending((dynamic)orderedQuery, (dynamic)RemoveConvert(orderExpression.KeySelector));
+                    orderedQuery = Queryable.ThenByDescending((dynamic)orderedQuery!, (dynamic)RemoveConvert(orderExpression.KeySelector));
                 }
             }
 
@@ -57,7 +57,7 @@ public class OrderEvaluator : IEvaluator, IInMemoryEvaluator
                 throw new DuplicateOrderChainException();
             }
 
-            IOrderedEnumerable<T> orderedQuery = null;
+            IOrderedEnumerable<T>? orderedQuery = null;
             foreach (var orderExpression in specification.OrderExpressions)
             {
                 if (orderExpression.OrderType == OrderTypeEnum.OrderBy)
@@ -70,11 +70,11 @@ public class OrderEvaluator : IEvaluator, IInMemoryEvaluator
                 }
                 else if (orderExpression.OrderType == OrderTypeEnum.ThenBy)
                 {
-                    orderedQuery = Queryable.ThenBy((dynamic)orderedQuery, (dynamic)RemoveConvert(orderExpression.KeySelector));
+                    orderedQuery = Queryable.ThenBy((dynamic)orderedQuery!, (dynamic)RemoveConvert(orderExpression.KeySelector));
                 }
                 else if (orderExpression.OrderType == OrderTypeEnum.ThenByDescending)
                 {
-                    orderedQuery = Queryable.ThenByDescending((dynamic)orderedQuery, (dynamic)RemoveConvert(orderExpression.KeySelector));
+                    orderedQuery = Queryable.ThenByDescending((dynamic)orderedQuery!, (dynamic)RemoveConvert(orderExpression.KeySelector));
                 }
             }
 
