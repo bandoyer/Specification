@@ -8,11 +8,6 @@
 public interface ISpecification<T, TResult> : ISpecification<T>
 {
     /// <summary>
-    /// Gets the specification builder.
-    /// </summary>
-    new ISpecificationBuilder<T, TResult> Query { get; }
-
-    /// <summary>
     /// The Select transform function to apply to the <typeparamref name="T"/> element.
     /// </summary>
     Expression<Func<T, TResult>>? Selector { get; }
@@ -41,11 +36,6 @@ public interface ISpecification<T, TResult> : ISpecification<T>
 /// <typeparam name="T">The type being queried against.</typeparam>
 public interface ISpecification<T>
 {
-    /// <summary>
-    /// Gets the specification builder.
-    /// </summary>
-    ISpecificationBuilder<T> Query { get; }
-
     /// <summary>
     /// Arbitrary state to be accessed from builders and evaluators.
     /// </summary>

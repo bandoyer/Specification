@@ -1,6 +1,5 @@
 // The EF6 provider's consumer. It seeds a database of its own on SQL Server, queries it through RepositoryBase<T>
-// and the DbSet extensions, then through the EF Core provider's DbSet extensions (EfCore.cs), prints one
-// "label: result" line per query, and drops the database. `verify run` runs it.
+// and the DbSet extensions, prints one "label: result" line per query, and drops the database. `verify run` runs it.
 // The output holds no ids or paths, so two trees' outputs compare with diff.
 using System.Data.Entity;
 using System.Data.SqlClient;
@@ -30,13 +29,10 @@ using (var db = new ShopContext(connectionString))
 try
 {
     await Shop.Query(connectionString);
-    await EfCoreShop.Query(connectionString);
 }
 finally
 {
-    // Both providers' pools, so no open connection keeps the database from being dropped.
     SqlConnection.ClearAllPools();
-    Microsoft.Data.SqlClient.SqlConnection.ClearAllPools();
     using var db = new ShopContext(connectionString);
     db.Database.Delete();
 }
@@ -180,8 +176,8 @@ static class Shop
         await Print<Store>("with-specification", async (_, db) => Sorted(await db.Stores.WithSpecification(Spec<Store>(q => q.Where(s => s.Company.Name == "Initech"))).Select(s => s.Name).ToListAsync()));
         await Print<Company>("with-specification-projected", async (_, db) => string.Join(", ", await db.Companies.WithSpecification(Spec<Company, string>(q => { q.OrderBy(c => c.Name); q.Select(c => c.Name); })).ToListAsync()));
 #if DBSET_READS
-        // #11's DbSet extensions, with the specifications EfCore.cs runs. The ! on default and null keeps their
-        // warning to Probes.cs, and changes no binding.
+        // #11's DbSet extensions, with the specifications the EF Core consumer runs. The ! on default and null keeps
+        // their warning to Probes.cs, and changes no binding.
         await Print<Company>("dbset-first", async (_, db) => Show((await db.Companies.FirstOrDefaultAsync(Reads.CompanyNamed("Globex")))?.Name));
         await Print<Company>("dbset-first-missing", async (_, db) => Show((await db.Companies.FirstOrDefaultAsync(Reads.CompanyNamed("Nope")))?.Name));
         await Print<Company>("dbset-first-projected", async (_, db) => Show(await db.Companies.FirstOrDefaultAsync(Reads.CountryOf("Initech"))));
@@ -204,28 +200,28 @@ static class Shop
 #endif
     }
 
-    internal static Specification<T> Spec<T>(Action<ISpecificationBuilder<T>> build)
+    static Specification<T> Spec<T>(Action<ISpecificationBuilder<T>> build)
     {
         var spec = new Specification<T>();
         build(spec.Query);
         return spec;
     }
 
-    internal static Specification<T, TResult> Spec<T, TResult>(Action<ISpecificationBuilder<T, TResult>> build)
+    static Specification<T, TResult> Spec<T, TResult>(Action<ISpecificationBuilder<T, TResult>> build)
     {
         var spec = new Specification<T, TResult>();
         build(spec.Query);
         return spec;
     }
 
-    internal static SingleResultSpecification<T> Single<T>(Action<ISpecificationBuilder<T>> build)
+    static SingleResultSpecification<T> Single<T>(Action<ISpecificationBuilder<T>> build)
     {
         var spec = new SingleResultSpecification<T>();
         build(spec.Query);
         return spec;
     }
 
-    internal static SingleResultSpecification<T, TResult> Single<T, TResult>(Action<ISpecificationBuilder<T, TResult>> build)
+    static SingleResultSpecification<T, TResult> Single<T, TResult>(Action<ISpecificationBuilder<T, TResult>> build)
     {
         var spec = new SingleResultSpecification<T, TResult>();
         build(spec.Query);
@@ -245,9 +241,9 @@ static class Shop
         typeof(IncludeEvaluator).Assembly.GetType("Ardalis.Specification.EntityFramework6.IncludeStringEvaluator")
             ?.GetProperty("Instance")?.GetValue(null) as IEvaluator;
 
-    internal static string Sorted(IEnumerable<string> names) => string.Join(", ", names.OrderBy(n => n, StringComparer.Ordinal));
+    static string Sorted(IEnumerable<string> names) => string.Join(", ", names.OrderBy(n => n, StringComparer.Ordinal));
 
-    internal static string Show(string? value) => value ?? "<null>";
+    static string Show(string? value) => value ?? "<null>";
 }
 
 public class Repository<T>(DbContext dbContext) : RepositoryBase<T>(dbContext) where T : class;

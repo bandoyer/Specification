@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# verify: builds and runs a consumer of the EF6 provider, and of the EF Core provider's DbSet extensions, the way a
-# project that references the packages does.
+# verify: builds and runs a consumer of the EF6 or EF Core provider, the way a project that references the package does.
 # `verify help` lists the commands. Everything it makes lives under one scratch root on /tmp.
 set -euo pipefail
 
@@ -22,8 +21,9 @@ usage() {
     cat <<EOF
 verify doctor                    check the SDK, the SQL Server port, the lock, and the scratch items
 verify tree <git ref>            export that commit of this repository into the scratch root; prints its folder
-verify consumer <tree> [<name>]  make a consumer project that references the tree's EF6 and EF Core providers;
-                                 prints its folder
+verify consumer <tree> [<name>]  make a consumer project that references the tree's EF6 provider; prints its folder
+verify efcore-consumer <tree> [<name>]
+                                 make a consumer project that references the tree's EF Core provider; prints its folder
 verify build <consumer>          build the consumer; prints each distinct warning and each probe's warnings
 verify run <consumer>            run the consumer against SQL Server under the shared lock; prints one line per query
 verify warnings <tree>/<path>.csproj [-p:Nullable=<value>]
@@ -135,6 +135,7 @@ report_warnings() {
 # A probe under "#if DBSET_READS" counts only when $3 is yes, since a consumer from a tree before #11 doesn't build it.
 report_probes() {
     local log=$1 probes=$2 reads=$3 n=0 line got skip=0
+    [[ -f $probes ]] || return 0
     while IFS= read -r line; do
         n=$((n + 1))
         [[ $line == '#if DBSET_READS' && $reads != yes ]] && skip=1
@@ -200,28 +201,43 @@ cmd_tree() {
 
 cmd_consumer() {
     [[ $# -eq 1 || $# -eq 2 ]] || die "usage: verify consumer <tree> [<name>]"
-    local tree name dir provider efcore defines= old
+    make_consumer consumer-template Ardalis.Specification.EntityFramework6 EF6 "$@"
+}
+
+cmd_efcore_consumer() {
+    [[ $# -eq 1 || $# -eq 2 ]] || die "usage: verify efcore-consumer <tree> [<name>]"
+    make_consumer efcore-consumer-template Ardalis.Specification.EntityFrameworkCore "EF Core" "$@"
+}
+
+# Makes the consumer consumers/<name> from the template folder $1, referencing the provider project src/$2 of the tree
+# $4, which errors call the $3 provider. The name $5 defaults to the tree's short sha. The template's Consumer.csproj.in
+# names the provider @PROVIDER@, and may name @SQLSERVER@, the version of Microsoft.EntityFrameworkCore.SqlServer in the
+# tree's Directory.Packages.props. It sets @DEFINES@ to ;DBSET_READS when the tree has #11's DbSet extensions, which
+# the consumer's DBSET_READS lines call, and to nothing before them.
+make_consumer() {
+    local template=$SKILL_DIR/$1 project=$2 label=$3 tree name dir provider sqlserver defines= old
+    shift 3
     # First, so its removal of day-old items can't take the tree this checks.
     ensure_scratch
     tree=$(item trees "$1")
     name=${2:-$(basename "$tree")}
     [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "refused: the name $name must be letters, digits, dots, dashes or underscores"
-    provider="$tree/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"
-    efcore="$tree/src/Ardalis.Specification.EntityFrameworkCore/Ardalis.Specification.EntityFrameworkCore.csproj"
-    [[ -f $provider ]] || die "$tree has no EF6 provider project"
-    [[ -f $efcore ]] || die "$tree has no EF Core provider project"
-    # #11's DbSet extensions; the consumer's DBSET_READS lines call them.
-    grep -q FirstOrDefaultAsync "$tree/src/Ardalis.Specification.EntityFramework6/Extensions/DbSetExtensions.cs" 2>/dev/null \
-        && defines=';DBSET_READS'
+    provider="$tree/src/$project/$project.csproj"
+    [[ -f $provider ]] || die "$tree has no $label provider project"
+    sqlserver=$(sed -nE 's/.*<PackageVersion Include="Microsoft\.EntityFrameworkCore\.SqlServer" Version="([^"]+)".*/\1/p' "$tree/Directory.Packages.props" 2>/dev/null | head -1) || true
+    if grep -q @SQLSERVER@ "$template/Consumer.csproj.in" && [[ -z $sqlserver ]]; then
+        die "$tree's Directory.Packages.props names no Microsoft.EntityFrameworkCore.SqlServer version"
+    fi
+    grep -q FirstOrDefaultAsync "$tree/src/$project/Extensions/DbSetExtensions.cs" 2>/dev/null && defines=';DBSET_READS'
     dir="$SCRATCH/consumers/$name"
     if [[ -e $dir || -L $dir ]]; then
         old=$(item consumers "$dir")
         rm -rf -- "$old"
     fi
     mkdir "$dir"
-    cp "$SKILL_DIR"/consumer-template/*.cs "$dir/"
-    sed -e "s|@PROVIDER@|$provider|" -e "s|@EFCORE_PROVIDER@|$efcore|" -e "s|@DEFINES@|$defines|" \
-        "$SKILL_DIR/consumer-template/Consumer.csproj.in" > "$dir/Consumer.csproj"
+    cp "$template"/*.cs "$dir/"
+    sed -e "s|@PROVIDER@|$provider|" -e "s|@SQLSERVER@|$sqlserver|" -e "s|@DEFINES@|$defines|" \
+        "$template/Consumer.csproj.in" > "$dir/Consumer.csproj"
     printf 'tree %s\n' "$(head -1 "$tree/$MARKER")" > "$dir/$MARKER"
     printf '%s\n' "$dir"
 }
@@ -472,6 +488,7 @@ case $command in
     doctor) cmd_doctor "$@" ;;
     tree) cmd_tree "$@" ;;
     consumer) cmd_consumer "$@" ;;
+    efcore-consumer) cmd_efcore_consumer "$@" ;;
     build) cmd_build "$@" ;;
     run) cmd_run "$@" ;;
     warnings) cmd_warnings "$@" ;;

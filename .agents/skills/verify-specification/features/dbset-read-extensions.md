@@ -4,7 +4,7 @@ A developer reads through a specification straight from a `DbSet`, in either pro
 
 ## Sub-features
 
-Each ID is a label the consumer prints, as `dbset-<ID>` from the EF6 provider and `efcore-dbset-<ID>` from the EF Core provider, both from Program.cs's seeded shop.
+Each ID is a label a consumer prints, as `dbset-<ID>` from the EF6 consumer and `efcore-dbset-<ID>` from the EF Core consumer. Each consumer seeds a shop of its own with the same rows, and runs the same specifications.
 
 - `first`, `first-missing`, `first-projected`, `first-projected-missing`: `FirstOrDefaultAsync`, with and without a projection, for a row that exists and for one that doesn't.
 - `single`, `single-missing`, `single-two-matches`, `single-projected`, `single-projected-missing`: `SingleOrDefaultAsync` with a single-result specification, the same way, and a specification two rows match.
@@ -23,9 +23,9 @@ Each ID is a label the consumer prints, as `dbset-<ID>` from the EF6 provider an
 Preconditions:
 
 - `verify doctor` passes.
-- `C` is a consumer from `verify consumer`, made from a tree that has #11's methods. `verify consumer` looks for `FirstOrDefaultAsync` in the tree's EF6 `DbSetExtensions.cs`. When it finds it, the consumer's `DBSET_READS` lines build.
+- `C` is a consumer from `verify consumer`, and `E` one from `verify efcore-consumer`, both made from a tree that has #11's methods. Each command looks for `FirstOrDefaultAsync` in its provider's `DbSetExtensions.cs` in the tree. When it finds it, the consumer's `DBSET_READS` lines build.
 
-- **Run.** Run `verify run "$C"`. It exits 0. The EF6 lines follow [EF6 repository queries](./ef6-repository-queries.md)'s `with-specification-projected`, and the EF Core lines come last. At #11's build commit, 40211f3, they read:
+- **Run.** Run `verify run "$C" > ef6.txt` and `verify run "$E" > efcore.txt`. Each exits 0. The EF6 lines follow [EF6 repository queries](./ef6-repository-queries.md)'s `with-specification-projected`, and the EF Core lines follow [EF Core context-factory repository](./efcore-context-factory-repository.md)'s seven lines. At the merge of main with #37 into this branch, they read:
 
   ```
   dbset-first: Globex
@@ -47,6 +47,9 @@ Preconditions:
   dbset-to-list-no-selector: SelectorNotFoundException
   dbset-first-default: ArgumentNullException (specification)
   dbset-first-null: ArgumentNullException (specification)
+  ```
+
+  ```
   efcore-dbset-to-list: Globex Oslo
   efcore-dbset-to-enumerable: Acme Durres
   efcore-dbset-first: Globex
@@ -56,12 +59,12 @@ Preconditions:
   ```
 
   The `efcore-dbset-*` lines between `first` and `first-null` read as the EF6 lines do.
-- **Compare the providers.** Save the run's output as `run.txt`, then run `diff <(sed -n 's/^dbset-//p' run.txt) <(sed -n 's/^efcore-dbset-//p' run.txt)`. It prints only `> as-async-enumerable: Acme Durres, Acme Tirana`, since EF6 has no `AsAsyncEnumerable`. Before calling the rest equal, check that the run printed each line above with its rows.
-- **Probes.** Run `verify build "$C"`. The probes `dbset-first-default`, `dbset-first-null`, `efcore-dbset-first-default` and `efcore-dbset-first-null` each get CS8625.
+- **Compare the providers.** Run `diff <(sed -n 's/^dbset-//p' ef6.txt) <(sed -n 's/^efcore-dbset-//p' efcore.txt)`. It prints only `> as-async-enumerable: Acme Durres, Acme Tirana`, since EF6 has no `AsAsyncEnumerable`. Before calling the rest equal, check that each run printed each line above with its rows.
+- **Probes.** Run `verify build "$C"`: the probes `dbset-first-default` and `dbset-first-null` each get CS8625. Run `verify build "$E"`: the probes `efcore-dbset-first-default` and `efcore-dbset-first-null` each get CS8625.
 
 ## Gotchas
 
-- A consumer from a tree before #11 builds without the `DBSET_READS` lines. Its run prints only `efcore-dbset-to-list` and `efcore-dbset-to-enumerable` of this feature, and its build prints none of these probes.
-- The EF Core half reads the tables Program.cs's EF6 context creates and seeds. It never creates or migrates them, so an entity change goes in both contexts.
+- A consumer from a tree before #11 builds without the `DBSET_READS` lines, and its build prints none of these probes. Of this feature, the EF6 consumer's run then prints no line, and the EF Core consumer's prints only `efcore-dbset-to-list` and `efcore-dbset-to-enumerable`.
+- The EF6 consumer seeds its shop in `Program.cs`, and the EF Core consumer in `Shop.cs`, beside its countries. A change to the shop's rows or entities goes in both, and a change to a specification goes in both copies of `DbSetReads.cs`.
 - In EF Core, a `null` warns CS8625 whichever overload takes it, since EF Core's predicate parameter isn't nullable either. The `first-null` line's parameter tells them apart: `specification` is #11's overload, and `predicate` would be EF's. A `default` warns only when the specification overload takes it.
-- Program.cs and EfCore.cs pass `default!` and `null!`, so their warnings stay on the probe lines. The `!` changes no binding.
+- `Program.cs` and `Shop.cs` pass `default!` and `null!`, so their warnings stay on the probe lines. The `!` changes no binding.

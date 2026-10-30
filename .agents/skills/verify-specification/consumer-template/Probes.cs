@@ -34,31 +34,14 @@ static class Probes
 }
 
 #if DBSET_READS
-// #11's DbSet extensions. A `default` argument binds to their specification overload, whose parameter isn't nullable,
-// so it warns; EF's CancellationToken overload wouldn't. A `null` warns in EF Core whichever overload takes it, since
-// EF Core's predicate parameter isn't nullable either, so Program.cs's first-null lines show the overload instead.
+// #11's DbSet extensions. A `default` or `null` argument binds to their specification overload, whose parameter isn't
+// nullable, so it warns. EF6's own overloads have no annotations, and wouldn't.
 static class DbSetProbes
 {
     static async Task PassDefault(ShopContext db)
     {
         _ = await db.Companies.FirstOrDefaultAsync(default); // PROBE dbset-first-default: CS8625
         _ = await db.Companies.FirstOrDefaultAsync(null); // PROBE dbset-first-null: CS8625
-    }
-}
-
-// The EF Core provider's extensions, imported here as a consumer imports them beside EF Core's own.
-namespace EfCoreProbes
-{
-    using Ardalis.Specification.EntityFrameworkCore;
-    using Microsoft.EntityFrameworkCore;
-
-    static class DbSetProbes
-    {
-        static async Task PassDefault(ShopCoreContext db)
-        {
-            _ = await db.Companies.FirstOrDefaultAsync(default); // PROBE efcore-dbset-first-default: CS8625
-            _ = await db.Companies.FirstOrDefaultAsync(null); // PROBE efcore-dbset-first-null: CS8625
-        }
     }
 }
 #endif

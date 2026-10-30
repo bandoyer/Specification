@@ -5,7 +5,10 @@ namespace Ardalis.Specification;
 /// <inheritdoc cref="ISpecification{T, TResult}"/>
 public class Specification<T, TResult> : Specification<T>, ISpecification<T, TResult>
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets a builder that defines this specification's query and its projection to <typeparamref name="TResult"/>.
+    /// The builder's methods are extension methods of <see cref="ISpecificationBuilder{T, TResult}"/>.
+    /// </summary>
     public new ISpecificationBuilder<T, TResult> Query => new SpecificationBuilder<T, TResult>(this);
 
     /// <inheritdoc/>
@@ -46,7 +49,10 @@ public class Specification<T> : ISpecification<T>
     private OneOrMany<string> _queryTags = new();
     private Dictionary<string, object>? _items;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets a builder that defines this specification's query, such as its filters, includes and ordering.
+    /// The builder's methods are extension methods of <see cref="ISpecificationBuilder{T}"/>.
+    /// </summary>
     public ISpecificationBuilder<T> Query => new SpecificationBuilder<T>(this);
 
     /// <summary>

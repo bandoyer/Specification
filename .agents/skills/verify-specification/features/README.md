@@ -5,7 +5,7 @@ This folder lists what `verify` drives in the Specification library, one file pe
 ## Baseline preconditions
 
 - `verify doctor` passes.
-- Each commit under test has a tree from `verify tree <commit>`, and each tree has a consumer from `verify consumer`.
+- Each commit under test has a tree from `verify tree <commit>`, and each tree has a consumer from `verify consumer`, or from `verify efcore-consumer` for an EF Core feature.
 - SQL Server is the spec-sql container from CONTRIBUTING.md, or the server `SPECIFICATION_TEST_SQL_SERVER` names.
 
 ## Driving conventions
@@ -32,5 +32,7 @@ Each feature file starts with an H1 title and a paragraph on what a developer us
 - [DbSet read extensions](./dbset-read-extensions.md): `FirstOrDefaultAsync`, `SingleOrDefaultAsync`, `CountAsync`, `AnyAsync` and the projection overloads on a `DbSet`, in both providers, EF Core's `AsAsyncEnumerable`, and where a `default` or `null` argument binds.
 - [EF6 include chains](./ef6-include-chains.md): two `Include` and `ThenInclude` chains in one specification, as a repository loads them.
 - [EF6 include strings](./ef6-include-strings.md): navigations loaded by include strings, the SQL EF6 builds for them, and a custom evaluator list holding one include evaluator.
+- [EF Core context-factory repository](./efcore-context-factory-repository.md): `AsAsyncEnumerable` through `ContextFactoryRepositoryBaseOfT`, and whether each context its factory made is disposed, whether the caller reads every row, stops early, or never starts.
+- [Query builder](./query-builder.md): reading `Query` through the specification classes and through `ISpecification<T>`, a specification class that implements `ISpecification<T>` without it, and the XML docs of the classes' `Query`.
 
-The map covers the EF Core provider only through its `DbSet` extensions. It doesn't cover the core library's in-memory evaluation, or the sample apps, yet. A run that changes one adds its file here.
+Of the EF Core provider, the map covers only the context-factory repository's `AsAsyncEnumerable` and the `DbSet` extensions. It doesn't cover the rest of that provider, the core library's in-memory evaluation, or the sample apps yet. A run that changes one adds its file here.

@@ -1,20 +1,20 @@
 ---
 name: verify-specification
-description: Drives the Specification library's EF6 provider, and both providers' DbSet extensions, as a consuming project does. It builds a nullable-enabled console consumer against any commit and runs its queries on the spec-sql SQL Server. Use it to verify, smoke-test or compare a change to src/Ardalis.Specification.EntityFramework6 or to either provider's DbSetExtensions.
+description: Drives the Specification library's EF6 and EF Core providers as a consuming project does. It builds a nullable-enabled console consumer against any commit and runs its queries on the spec-sql SQL Server. Use it to verify, smoke-test or compare a change to src/Ardalis.Specification.EntityFramework6 or src/Ardalis.Specification.EntityFrameworkCore.
 ---
 
 # Verify the Specification library
 
-The library has no app of its own. Its user is a developer whose project references a provider package, so this skill stands in for that project with a **consumer**: a net9.0 console project with nullable enabled, built against one commit's EF6 and EF Core providers. Its build shows the warnings a caller gets. Its run queries SQL Server through the EF6 provider's `RepositoryBase<T>` and both providers' `DbSet` extensions. [features/README.md](features/README.md) maps what each recipe drives.
+The library has no app of its own. Its user is a developer whose project references a provider package, so this skill stands in for that project with a **consumer**: a net9.0 console project with nullable enabled, built against one commit's EF6 provider. Its build shows the warnings a caller gets. Its run queries SQL Server through `RepositoryBase<T>` and the `DbSet` extensions. The **EF Core consumer** is the same kind of project, built against the EF Core provider. Its run enumerates `AsAsyncEnumerable` through `RepositoryBase<T>` and `ContextFactoryRepositoryBaseOfT`, and queries a shop with the consumer's rows through the `DbSet` extensions. [features/README.md](features/README.md) maps what each recipe drives.
 
 Every step goes through one helper, `.agents/skills/verify-specification/bin/verify`, called `verify` below; `verify help` lists its commands. In a skillflow run, prefix each call with skillflow's `bin/sandbox`.
 
 ## Launch
 
 1. Export each commit you drive as a **tree**: `T=$(verify tree <commit>)`. It runs `git archive`, so the tree holds exactly that commit, without uncommitted edits, and the checkout stays as it was. A tree is reused while it exists.
-2. Make a consumer from the tree: `C=$(verify consumer "$T" <name>)`. The name defaults to the tree's short sha, and making a name again replaces that consumer.
+2. Make a consumer from the tree: `C=$(verify consumer "$T" <name>)`, or `C=$(verify efcore-consumer "$T" <name>)` for the EF Core consumer. The name defaults to the tree's short sha, and making a name again replaces that consumer.
 
-The consumer is ready when `verify build "$C"` ends `build: exit 0`. Its run creates and seeds its own database, `VerifySpecificationConsumer`, so nothing needs seeding first.
+The consumer is ready when `verify build "$C"` ends `build: exit 0`. Its run creates and seeds its own database, `VerifySpecificationConsumer`, or `VerifySpecificationEFCoreConsumer` for the EF Core consumer, so nothing needs seeding first.
 
 ## Doctor
 
@@ -39,11 +39,14 @@ A comparison keeps both outputs and their diff. Before it calls two outputs equa
 
 ## Cleanup
 
-`verify cleanup <item>...` removes the trees and consumers it names. `verify cleanup` alone removes all of them, then the scratch root. Either way, it removes only a folder directly under the scratch root's `trees/` or `consumers/` that holds the `.verify-made` marker, after it resolves `..` and links, and it refuses anything else. Before it makes a folder, the helper also removes its own items older than a day. The run drops its database when it ends. A run killed midway leaves `VerifySpecificationConsumer` behind, and the next run drops it first.
+`verify cleanup <item>...` removes the trees and consumers it names. `verify cleanup` alone removes all of them, then the scratch root. Either way, it removes only a folder directly under the scratch root's `trees/` or `consumers/` that holds the `.verify-made` marker, after it resolves `..` and links, and it refuses anything else. Before it makes a folder, the helper also removes its own items older than a day. The run drops its database when it ends. A run killed midway leaves its database behind, and the next run of that kind of consumer drops it first.
 
 ## Helpers
 
 - `bin/verify` is the CLI above. Its scratch root is `/tmp/verify-specification-<uid>`, with mode 700. The repository's `.gitignore` ignores every `bin/` folder and every `*.log` file, so a new file there, or a saved log such as a test's fixture, needs `git add -f`.
-- `consumer-template/` holds the consumer. `Program.cs` has the queries and `Probes.cs` the compile-only nullable probes. `EfCore.cs` queries Program.cs's tables through the EF Core provider, with the specifications `DbSetReads.cs` shares between the two. A line that calls #11's DbSet extensions sits under `#if DBSET_READS`, which `verify consumer` defines only for a tree that has them. A run that needs another query or probe adds it there, and adds its sub-feature to the feature map.
+- `consumer-template/` holds the consumer. `Program.cs` has the queries and `Probes.cs` the compile-only nullable probes. A run that needs another query or probe adds it there, and adds its sub-feature to the feature map.
+- `efcore-consumer-template/` holds the EF Core consumer's project, its queries in `Program.cs` and `Shop.cs`, and its probes in `Probes.cs`. Its project takes the version of `Microsoft.EntityFrameworkCore.SqlServer` from the tree's `Directory.Packages.props`.
+- Both consumers run the specifications in `DbSetReads.cs`, one copy in each template, so change both. A line that calls #11's DbSet extensions sits under `#if DBSET_READS`, which `verify consumer` and `verify efcore-consumer` define only for a tree that has them.
+- `consumer-snippets/` holds files that a feature's recipe copies into a consumer of its own, because each one fails to build on one side of the change it checks. [features/query-builder.md](features/query-builder.md) uses them.
 - `benchmark-template/` holds the project file `verify benchmark` writes beside a workload. `tests/benchmark.sh` plays saved BenchmarkDotNet runs back through a stand-in dotnet: one with allocations, two that measured nothing and exited 0, and #7's same-process comparison, whole and without its Ratio and RatioSD columns.
 - `tests/guards.sh` locks the guards on cleanup and on each command that writes. `tests/warnings.sh` checks that the warning report reads every form MSBuild and NuGet write. It builds the two projects in `tests/msbuild-warnings/` for real, and feeds the forms they can't yield through a stand-in dotnet. The `[pr]` suite in `skillflow.toml` runs every script in `tests/`. Run them after any change to `bin/verify`.
