@@ -132,6 +132,13 @@ public class SpecificationTests
         newSpec.AsTracking.Should().Be(spec.AsTracking);
     }
 
+    [Fact]
+    public void Interfaces_DoNotDeclareQuery()
+    {
+        typeof(ISpecification<Customer>).GetProperty(nameof(Specification<Customer>.Query)).Should().BeNull();
+        typeof(ISpecification<Customer, string>).GetProperty(nameof(Specification<Customer, string>.Query)).Should().BeNull();
+    }
+
 #if NET8_0_OR_GREATER
     [Fact]
     public void Items_InitializesOnFirstAccess()
