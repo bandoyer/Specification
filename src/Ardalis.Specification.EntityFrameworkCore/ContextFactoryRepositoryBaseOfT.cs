@@ -117,6 +117,8 @@ public abstract class ContextFactoryRepositoryBaseOfT<TEntity, TContext> : IRepo
     /// <inheritdoc/>
     public IAsyncEnumerable<TEntity> AsAsyncEnumerable(ISpecification<TEntity> specification)
     {
+        // Here, since the iterator below runs nothing until the caller enumerates.
+        ArgumentNullException.ThrowIfNull(specification);
         return AsAsyncEnumerableCore(specification, default);
     }
 
