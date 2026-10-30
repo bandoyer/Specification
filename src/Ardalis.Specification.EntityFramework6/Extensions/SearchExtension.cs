@@ -1,49 +1,107 @@
 ﻿using System.Data.Entity;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace Ardalis.Specification.EntityFramework6;
 
 public static class SearchExtension
 {
-    /// <summary>
-    /// Filters <paramref name="source"/> by applying an 'SQL LIKE' operation to it.
-    /// </summary>
-    /// <typeparam name="T">The type being queried against.</typeparam>
-    /// <param name="source">The sequence of <typeparamref name="T"/></param>
-    /// <param name="criterias">
-    /// <list type="bullet">
-    ///     <item>Selector, the property to apply the SQL LIKE against.</item>
-    ///     <item>SearchTerm, the value to use for the SQL LIKE.</item>
-    /// </list>
-    /// </param>
-    /// <returns></returns>
-    public static IQueryable<T> Search<T>(this IQueryable<T> source, IEnumerable<SearchExpressionInfo<T>> criterias)
+    // EF6 sends a property of a constant object as a parameter, the way it sends a captured variable.
+    // A bare constant it writes into the SQL as a literal, so each search term would be a new SQL text.
+    private sealed class StringVar(string value)
     {
-        Expression? expr = null;
-        var parameter = Expression.Parameter(typeof(T), "x");
+        public string Value { get; } = value;
+    }
+    private static readonly PropertyInfo _stringVarValueProperty = typeof(StringVar).GetProperty(nameof(StringVar.Value))!;
+    private static readonly MethodInfo _likeMethodInfo = typeof(DbFunctions)
+        .GetMethod(nameof(DbFunctions.Like), [typeof(string), typeof(string)])!;
 
-        foreach (var criteria in criterias)
+    private static MemberExpression StringAsExpression(string value)
+        => Expression.Property(Expression.Constant(new StringVar(value)), _stringVarValueProperty);
+
+    public static IQueryable<T> ApplySingleLike<T>(this IQueryable<T> source, SearchExpressionInfo<T> searchExpression)
+    {
+        Debug.Assert(_likeMethodInfo is not null);
+
+        var param = searchExpression.Selector.Parameters[0];
+        var selectorExpr = searchExpression.Selector.Body;
+        var patternExpr = StringAsExpression(searchExpression.SearchTerm);
+
+        var likeExpr = Expression.Call(
+            null,
+            _likeMethodInfo,
+            selectorExpr,
+            patternExpr);
+
+        return source.Where(Expression.Lambda<Func<T, bool>>(likeExpr, param));
+    }
+
+    public static IQueryable<T> ApplyLikesAsOrGroup<T>(this IQueryable<T> source, IEnumerable<SearchExpressionInfo<T>> searchExpressions)
+    {
+        Debug.Assert(_likeMethodInfo is not null);
+
+        Expression? combinedExpr = null;
+        ParameterExpression? mainParam = null;
+        ParameterReplacerVisitor? visitor = null;
+
+        foreach (var searchExpression in searchExpressions)
         {
-            var (selector, searchTerm) = (criteria.Selector, criteria.SearchTerm);
-            if (string.IsNullOrEmpty(criteria.SearchTerm))
-            {
-                continue;
-            }
-
-            var like = typeof(DbFunctions).GetMethod(nameof(DbFunctions.Like), new Type[] { typeof(string), typeof(string) });
-
-            var propertySelector = ParameterReplacerVisitor.Replace(selector, selector.Parameters[0], parameter);
-
-            var likeExpression = Expression.Call(
-                                    null,
-                                    like!,
-                                    (propertySelector as LambdaExpression)?.Body!,
-                                    Expression.Constant(searchTerm));
-
-            expr = expr == null ? (Expression)likeExpression : Expression.OrElse(expr, likeExpression);
+            ApplyLikeAsOrGroup(ref combinedExpr, ref mainParam, ref visitor, searchExpression);
         }
 
-        return expr == null
+        return combinedExpr is null || mainParam is null
             ? source
-            : source.Where(Expression.Lambda<Func<T, bool>>(expr, parameter));
+            : source.Where(Expression.Lambda<Func<T, bool>>(combinedExpr, mainParam));
+    }
+
+    // The span overload's stand-in, for SearchEvaluator's sorted list: the group is the items from index from up to to.
+    internal static IQueryable<T> ApplyLikesAsOrGroup<T>(this IQueryable<T> source, List<SearchExpressionInfo<T>> searchExpressions, int from, int to)
+    {
+        Debug.Assert(_likeMethodInfo is not null);
+
+        Expression? combinedExpr = null;
+        ParameterExpression? mainParam = null;
+        ParameterReplacerVisitor? visitor = null;
+
+        for (var i = from; i < to; i++)
+        {
+            ApplyLikeAsOrGroup(ref combinedExpr, ref mainParam, ref visitor, searchExpressions[i]);
+        }
+
+        return combinedExpr is null || mainParam is null
+            ? source
+            : source.Where(Expression.Lambda<Func<T, bool>>(combinedExpr, mainParam));
+    }
+
+    private static void ApplyLikeAsOrGroup<T>(
+        ref Expression? combinedExpr,
+        ref ParameterExpression? mainParam,
+        ref ParameterReplacerVisitor? visitor,
+        SearchExpressionInfo<T> searchExpression)
+    {
+        mainParam ??= searchExpression.Selector.Parameters[0];
+
+        var selectorExpr = searchExpression.Selector.Body;
+        if (mainParam != searchExpression.Selector.Parameters[0])
+        {
+            visitor ??= new ParameterReplacerVisitor(searchExpression.Selector.Parameters[0], mainParam);
+
+            // If there are more than 2 search items, we want to avoid creating a new visitor instance (saving 32 bytes per instance).
+            // We're in a sequential loop, no concurrency issues.
+            visitor.Update(searchExpression.Selector.Parameters[0], mainParam);
+            selectorExpr = visitor.Visit(selectorExpr);
+        }
+
+        var patternExpr = StringAsExpression(searchExpression.SearchTerm);
+
+        var likeExpr = Expression.Call(
+            null,
+            _likeMethodInfo,
+            selectorExpr,
+            patternExpr);
+
+        combinedExpr = combinedExpr is null
+            ? likeExpr
+            : Expression.OrElse(combinedExpr, likeExpr);
     }
 }

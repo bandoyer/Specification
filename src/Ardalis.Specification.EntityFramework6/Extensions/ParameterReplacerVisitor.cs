@@ -1,19 +1,16 @@
 ﻿namespace Ardalis.Specification.EntityFramework6;
 
-internal class ParameterReplacerVisitor : ExpressionVisitor
+public sealed class ParameterReplacerVisitor : ExpressionVisitor
 {
-    private readonly Expression _newExpression;
-    private readonly ParameterExpression _oldParameter;
+    private ParameterExpression _oldParameter;
+    private Expression _newExpression;
 
-    private ParameterReplacerVisitor(ParameterExpression oldParameter, Expression newExpression)
-    {
-        _oldParameter = oldParameter;
-        _newExpression = newExpression;
-    }
+    public ParameterReplacerVisitor(ParameterExpression oldParameter, Expression newExpression) =>
+        (_oldParameter, _newExpression) = (oldParameter, newExpression);
 
-    internal static Expression Replace(Expression expression, ParameterExpression oldParameter, Expression newExpression)
-      => new ParameterReplacerVisitor(oldParameter, newExpression).Visit(expression);
+    internal void Update(ParameterExpression oldParameter, Expression newExpression) =>
+        (_oldParameter, _newExpression) = (oldParameter, newExpression);
 
-    protected override Expression VisitParameter(ParameterExpression p)
-      => p == _oldParameter ? _newExpression : p;
+    protected override Expression VisitParameter(ParameterExpression node) =>
+        node == _oldParameter ? _newExpression : node;
 }
