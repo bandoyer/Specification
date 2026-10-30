@@ -74,6 +74,7 @@ refuses "build of a folder inside a scratch item" build "$TREE/src"
 refuses "run of a decoy consumer" run @DECOY@
 refuses "warnings of a decoy project" warnings @DECOY@/Consumer.csproj
 refuses "warnings of a project that climbs out with .." warnings "$TREE/../../../@DECOYNAME@/Consumer.csproj"
+refuses "benchmark of a decoy tree" benchmark @DECOY@ "$SCRATCH" IncludeStep
 
 CONSUMER=$("$V" consumer "$TREE" guards)
 if [[ -n $CONSUMER && -f $CONSUMER/Consumer.csproj ]]; then pass "consumer makes $CONSUMER"; else fail "consumer made no project from $TREE"; fi
