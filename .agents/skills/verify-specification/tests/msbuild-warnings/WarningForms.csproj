@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <Target Name="ReportWarnings" BeforeTargets="CoreCompile">
+    <Warning Code="VERIFY1001" Text="Coded warning from an actual MSBuild target" />
+    <Warning Text="Warning without an optional Code from an actual MSBuild target" />
+  </Target>
+</Project>
