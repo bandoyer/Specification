@@ -1,5 +1,5 @@
-// The specifications the DbSet extension lines run. Each consumer template has this same file, over entities of the
-// same shape, so each efcore-dbset-<name> line compares with its dbset-<name> line. Change both copies together.
+// The specifications the DbSet extension lines run. verify copies this file into both consumers, whose entities have the
+// same shape, so each efcore-dbset-<name> line runs the specification its dbset-<name> line runs.
 using Ardalis.Specification;
 
 static class Reads

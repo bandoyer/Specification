@@ -138,6 +138,8 @@ report_probes() {
     [[ -f $probes ]] || return 0
     while IFS= read -r line; do
         n=$((n + 1))
+        # An editor that follows .editorconfig saves the file with CRLF endings.
+        line=${line%$'\r'}
         [[ $line == '#if DBSET_READS' && $reads != yes ]] && skip=1
         [[ $line == '#endif' ]] && skip=0
         [[ $skip -eq 0 && $line =~ //\ PROBE\ ([a-z0-9-]+):\ (.*)$ ]] || continue
@@ -213,7 +215,7 @@ cmd_efcore_consumer() {
 # $4, which errors call the $3 provider. The name $5 defaults to the tree's short sha. The template's Consumer.csproj.in
 # names the provider @PROVIDER@, and may name @SQLSERVER@, the version of Microsoft.EntityFrameworkCore.SqlServer in the
 # tree's Directory.Packages.props. It sets @DEFINES@ to ;DBSET_READS when the tree has #11's DbSet extensions, which
-# the consumer's DBSET_READS lines call, and to nothing before them.
+# the consumer's DBSET_READS lines call, and to nothing before them. Every consumer also gets consumer-shared/'s files.
 make_consumer() {
     local template=$SKILL_DIR/$1 project=$2 label=$3 tree name dir provider sqlserver defines= old
     shift 3
@@ -235,7 +237,7 @@ make_consumer() {
         rm -rf -- "$old"
     fi
     mkdir "$dir"
-    cp "$template"/*.cs "$dir/"
+    cp "$template"/*.cs "$SKILL_DIR"/consumer-shared/*.cs "$dir/"
     sed -e "s|@PROVIDER@|$provider|" -e "s|@SQLSERVER@|$sqlserver|" -e "s|@DEFINES@|$defines|" \
         "$template/Consumer.csproj.in" > "$dir/Consumer.csproj"
     printf 'tree %s\n' "$(head -1 "$tree/$MARKER")" > "$dir/$MARKER"

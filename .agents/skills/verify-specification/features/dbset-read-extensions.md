@@ -65,6 +65,6 @@ Preconditions:
 ## Gotchas
 
 - A consumer from a tree before #11 builds without the `DBSET_READS` lines, and its build prints none of these probes. Of this feature, the EF6 consumer's run then prints no line, and the EF Core consumer's prints only `efcore-dbset-to-list` and `efcore-dbset-to-enumerable`.
-- The EF6 consumer seeds its shop in `Program.cs`, and the EF Core consumer in `Shop.cs`, beside its countries. A change to the shop's rows or entities goes in both, and a change to a specification goes in both copies of `DbSetReads.cs`.
+- The EF6 consumer seeds its shop in `Program.cs`, and the EF Core consumer in `Shop.cs`, beside its countries. A change to the shop's rows or entities goes in both. Both consumers run the specifications in `consumer-shared/DbSetReads.cs`.
 - In EF Core, a `null` warns CS8625 whichever overload takes it, since EF Core's predicate parameter isn't nullable either. The `first-null` line's parameter tells them apart: `specification` is #11's overload, and `predicate` would be EF's. A `default` warns only when the specification overload takes it.
 - `Program.cs` and `Shop.cs` pass `default!` and `null!`, so their warnings stay on the probe lines. The `!` changes no binding.
