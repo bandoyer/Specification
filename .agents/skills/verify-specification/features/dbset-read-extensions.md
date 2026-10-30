@@ -25,7 +25,7 @@ Preconditions:
 - `verify doctor` passes.
 - `C` is a consumer from `verify consumer`, made from a tree that has #11's methods. `verify consumer` looks for `FirstOrDefaultAsync` in the tree's EF6 `DbSetExtensions.cs`. When it finds it, the consumer's `DBSET_READS` lines build.
 
-- **Run.** Run `verify run "$C"`. It exits 0. The EF6 lines follow [EF6 repository queries](./ef6-repository-queries.md)'s `with-specification-projected`, and the EF Core lines come last. Predicted from #11's acceptance criteria, before its build, they read:
+- **Run.** Run `verify run "$C"`. It exits 0. The EF6 lines follow [EF6 repository queries](./ef6-repository-queries.md)'s `with-specification-projected`, and the EF Core lines come last. At #11's build commit, 40211f3, they read:
 
   ```
   dbset-first: Globex
