@@ -23,7 +23,7 @@ public class SearchEvaluatorTests(TestFactory factory) : IntegrationTest(factory
         actualSql.Should().Be(expectedSql);
     }
 
-    [Fact(Skip = "Not producing the same query, it's not parameterized and no null check [Fati Iseni, 15/06/2025]")]
+    [Fact]
     public void QueriesMatch_GivenSingleSearch()
     {
         var storeTerm = "ab1";
@@ -36,14 +36,43 @@ public class SearchEvaluatorTests(TestFactory factory) : IntegrationTest(factory
         var actual = _evaluator.GetQuery(DbContext.Companies, spec);
         var actualSql = GetQueryString(DbContext, actual);
 
+        // EF6 writes "%" + storeTerm + "%" inside a query as a concatenation in SQL, so the pattern comes from a local.
+        var storePattern = $"%{storeTerm}%";
         var expected = DbContext.Companies
-            .Where(x => DbFunctions.Like(x.Name, "%" + storeTerm + "%"));
+            .Where(x => DbFunctions.Like(x.Name, storePattern));
         var expectedSql = GetQueryString(DbContext, expected);
 
         actualSql.Should().Be(expectedSql);
     }
 
-    [Fact(Skip = "Not producing the same query, it's not parameterized and no null check [Fati Iseni, 15/06/2025]")]
+    // A literal would quote, prefix, or size each of these differently in the SQL.
+    public static TheoryData<string> SearchTermForms => new()
+    {
+        "%O'Brien%",
+        "%Tiranë%",
+        "%",
+        "%" + new string('z', 3998) + "%", // 4000 characters, SQL Server's longest LIKE pattern
+    };
+
+    [Theory]
+    [MemberData(nameof(SearchTermForms))]
+    public void QueriesMatch_GivenSingleSearchWithTermForm(string term)
+    {
+        var spec = new Specification<Company>();
+        spec.Query
+            .Search(x => x.Name, term);
+
+        var actual = _evaluator.GetQuery(DbContext.Companies, spec);
+        var actualSql = GetQueryString(DbContext, actual);
+
+        var expected = DbContext.Companies
+            .Where(x => DbFunctions.Like(x.Name, term));
+        var expectedSql = GetQueryString(DbContext, expected);
+
+        actualSql.Should().Be(expectedSql);
+    }
+
+    [Fact]
     public void QueriesMatch_GivenMultipleSearch()
     {
         var storeTerm = "ab1";
@@ -62,11 +91,16 @@ public class SearchEvaluatorTests(TestFactory factory) : IntegrationTest(factory
         var actual = _evaluator.GetQuery(DbContext.Stores, spec);
         var actualSql = GetQueryString(DbContext, actual);
 
+        // EF6 writes "%" + term + "%" inside a query as a concatenation in SQL, so each pattern comes from a local.
+        var storePattern = $"%{storeTerm}%";
+        var companyPattern = $"%{companyTerm}%";
+        var countryPattern = $"%{countryTerm}%";
+        var streetPattern = $"%{streetTerm}%";
         var expected = DbContext.Stores
-            .Where(x => DbFunctions.Like(x.Name, "%" + storeTerm + "%")
-                    || DbFunctions.Like(x.Company.Name, "%" + storeTerm + "%"))
-            .Where(x => DbFunctions.Like(x.Address.Street, "%" + storeTerm + "%"))
-            .Where(x => DbFunctions.Like(x.Company.Country.Name, "%" + storeTerm + "%"));
+            .Where(x => DbFunctions.Like(x.Name, storePattern)
+                    || DbFunctions.Like(x.Company.Name, companyPattern))
+            .Where(x => DbFunctions.Like(x.Address.Street, streetPattern))
+            .Where(x => DbFunctions.Like(x.Company.Country.Name, countryPattern));
         var expectedSql = GetQueryString(DbContext, expected);
 
         actualSql.Should().Be(expectedSql);
