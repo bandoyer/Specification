@@ -131,22 +131,24 @@ report_warnings() {
         }' "$1"
 }
 
-# For each "// PROBE <tag>: <codes>" line in the consumer's Probes.cs, prints the warnings the build log $1 has there.
-# A probe under "#if DBSET_READS" counts only when $3 is yes, since a consumer from a tree before #11 doesn't build it.
+# For each "// PROBE <tag>: <codes>" line in the consumer $2's probe files, Probes.cs and then any other *Probes.cs,
+# prints the warnings the build log $1 has there. A consumer holds only the probe files its tree supports, so every
+# PROBE line counts.
 report_probes() {
-    local log=$1 probes=$2 reads=$3 n=0 line got skip=0
-    [[ -f $probes ]] || return 0
-    while IFS= read -r line; do
-        n=$((n + 1))
-        # An editor that follows .editorconfig saves the file with CRLF endings.
-        line=${line%$'\r'}
-        [[ $line == '#if DBSET_READS' && $reads != yes ]] && skip=1
-        [[ $line == '#endif' ]] && skip=0
-        [[ $skip -eq 0 && $line =~ //\ PROBE\ ([a-z0-9-]+):\ (.*)$ ]] || continue
-        got=$(sed -nE "s/^.*\/Probes\.cs\($n,[0-9]+\): warning ([A-Z]+[0-9]+):.*/\1/p" "$log" | sort -u | paste -sd, -)
-        printf 'probe %s (Probes.cs:%d): got %s; an annotated provider gives %s\n' \
-            "${BASH_REMATCH[1]}" "$n" "${got:-none}" "${BASH_REMATCH[2]}"
-    done < "$probes"
+    local log=$1 file name n line got
+    for file in "$2/Probes.cs" "$2"/?*Probes.cs; do
+        [[ -f $file ]] || continue
+        name=$(basename "$file") n=0
+        while IFS= read -r line; do
+            n=$((n + 1))
+            # An editor that follows .editorconfig saves the file with CRLF endings, which the codes mustn't keep.
+            line=${line%$'\r'}
+            [[ $line =~ //\ PROBE\ ([a-z0-9-]+):\ (.*)$ ]] || continue
+            got=$(sed -nE "s/^.*\/${name//./\\.}\($n,[0-9]+\): warning ([A-Z]+[0-9]+):.*/\1/p" "$log" | sort -u | paste -sd, -)
+            printf 'probe %s (%s:%d): got %s; an annotated provider gives %s\n' \
+                "${BASH_REMATCH[1]}" "$name" "$n" "${got:-none}" "${BASH_REMATCH[2]}"
+        done < "$file"
+    done
 }
 
 cmd_doctor() {
@@ -215,7 +217,8 @@ cmd_efcore_consumer() {
 # $4, which errors call the $3 provider. The name $5 defaults to the tree's short sha. The template's Consumer.csproj.in
 # names the provider @PROVIDER@, and may name @SQLSERVER@, the version of Microsoft.EntityFrameworkCore.SqlServer in the
 # tree's Directory.Packages.props. It sets @DEFINES@ to ;DBSET_READS when the tree has #11's DbSet extensions, which
-# the consumer's DBSET_READS lines call, and to nothing before them. Every consumer also gets consumer-shared/'s files.
+# the consumer's DBSET_READS lines call, and to nothing before them. For such a tree it also copies the template's
+# with-dbset-reads/ files. Every consumer also gets consumer-shared/'s files.
 make_consumer() {
     local template=$SKILL_DIR/$1 project=$2 label=$3 tree name dir provider sqlserver defines= old
     shift 3
@@ -238,6 +241,7 @@ make_consumer() {
     fi
     mkdir "$dir"
     cp "$template"/*.cs "$SKILL_DIR"/consumer-shared/*.cs "$dir/"
+    [[ -z $defines ]] || cp "$template"/with-dbset-reads/*.cs "$dir/"
     sed -e "s|@PROVIDER@|$provider|" -e "s|@SQLSERVER@|$sqlserver|" -e "s|@DEFINES@|$defines|" \
         "$template/Consumer.csproj.in" > "$dir/Consumer.csproj"
     printf 'tree %s\n' "$(head -1 "$tree/$MARKER")" > "$dir/$MARKER"
@@ -246,12 +250,11 @@ make_consumer() {
 
 cmd_build() {
     [[ $# -eq 1 ]] || die "usage: verify build <consumer>"
-    local dir status=0 reads=no
+    local dir status=0
     dir=$(item consumers "$1")
-    grep -qF ';DBSET_READS</DefineConstants>' "$dir/Consumer.csproj" && reads=yes
     dotnet build "$dir/Consumer.csproj" --no-incremental -nologo -tl:off -clp:NoSummary > "$dir/build.log" 2>&1 || status=$?
     report_warnings "$dir/build.log"
-    report_probes "$dir/build.log" "$dir/Probes.cs" "$reads"
+    report_probes "$dir/build.log" "$dir"
     echo "build: exit $status"
     [[ $status -eq 0 ]] || grep -E ': error ' "$dir/build.log" | sort -u >&2
     return $status
