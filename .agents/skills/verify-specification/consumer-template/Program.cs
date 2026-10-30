@@ -106,7 +106,7 @@ static class Shop
                 return $"{e.GetType().Name}: {e.Message}";
             }
         });
-        await Print<Company>("include-string",async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include("Country")))).Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"})")));
+        await Print<Company>("include-string", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include("Country")))).Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"})")));
         await Print<Company>("include-strings", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include("Country").Include("Stores.Products"))))
             .Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"}) [{string.Join("; ", c.Stores.OrderBy(s => s.Name, StringComparer.Ordinal).Select(s => $"{s.Name}: {Sorted(s.Products.Select(p => p.Name))}"))}]")));
         await Print<Company>("include-string-and-expression", async (repo, _) => CountriesAndStores(await repo.ListAsync(CountryAndStores())));
