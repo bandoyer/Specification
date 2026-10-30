@@ -1,0 +1,261 @@
+#!/usr/bin/env bash
+# verify: builds and runs a consumer of the EF6 provider, the way a project that references the package does.
+# `verify help` lists the commands. Everything it makes lives under one scratch root on /tmp.
+set -euo pipefail
+
+SKILL_DIR=$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)
+REPO_ROOT=$(git -C "$SKILL_DIR" rev-parse --show-toplevel)
+# The guard test sets its own root; any root must be a folder directly in /tmp named verify-specification-*.
+SCRATCH=${VERIFY_SPECIFICATION_SCRATCH:-/tmp/verify-specification-$(id -u)}
+MARKER=.verify-made
+LOCK="$HOME/.cache/specification-spec-sql.lock"
+# CONTRIBUTING.md's spec-sql container, used when SPECIFICATION_TEST_SQL_SERVER is unset.
+DEFAULT_SQL='Server=localhost,1433;User Id=sa;Password=P@ssW0rd!;TrustServerCertificate=True'
+
+die() { echo "verify: $*" >&2; exit 2; }
+
+[[ $SCRATCH == /tmp/verify-specification-* && ${SCRATCH#/tmp/} != */* ]] \
+    || die "refused: the scratch root $SCRATCH is not /tmp/verify-specification-<something>"
+
+usage() {
+    cat <<EOF
+verify doctor                    check the SDK, the SQL Server port, the lock, and the scratch items
+verify tree <git ref>            export that commit of this repository into the scratch root; prints its folder
+verify consumer <tree> [<name>]  make a consumer project that references the tree's EF6 provider; prints its folder
+verify build <consumer>          build the consumer; prints each distinct warning and each probe's warnings
+verify run <consumer>            run the consumer against SQL Server under the shared lock; prints one line per query
+verify warnings <tree>/<path>.csproj [-p:Nullable=<value>]
+                                 build a project inside a tree; prints each distinct warning with its frameworks
+verify cleanup [<item>...]       remove the named scratch items, or every one; never touches anything else
+Scratch root: $SCRATCH
+EOF
+}
+
+# Prints the resolved path when $2 is a scratch item this helper made: one folder directly under the root's trees/
+# or consumers/ (the kind $1 names, or either for "any"), holding the marker. Otherwise says why and returns 1.
+check_item() {
+    local kind=$1 path=$2 root resolved rest top name
+    if [[ ! -d $SCRATCH || -L $SCRATCH || ! -O $SCRATCH ]]; then
+        echo "verify: refused: the scratch root $SCRATCH is missing, a link, or another user's" >&2
+        return 1
+    fi
+    root=$(realpath -m -- "$SCRATCH")
+    resolved=$(realpath -m -- "$path")
+    rest=${resolved#"$root"/}
+    top=${rest%%/*}
+    name=${rest#*/}
+    if [[ $resolved != "$root"/* || $rest != */* || -z $name || $name == */* ]] \
+        || [[ $top != trees && $top != consumers ]] || [[ $kind != any && $kind != "$top" ]]; then
+        echo "verify: refused: $path is not a folder directly under $root/${kind/any/trees or consumers}" >&2
+        return 1
+    fi
+    if [[ ! -d $resolved || ! -f $resolved/$MARKER ]]; then
+        echo "verify: refused: $path has no $MARKER marker, so this helper didn't make it" >&2
+        return 1
+    fi
+    printf '%s\n' "$resolved"
+}
+
+item() { check_item "$@" || exit 2; }
+
+remove_item() {
+    local dir
+    dir=$(check_item any "$1") || return 1
+    rm -rf -- "$dir"
+    echo "removed $dir"
+}
+
+# Makes the scratch root, then removes this helper's items there that are older than a day.
+ensure_scratch() {
+    if [[ -e $SCRATCH || -L $SCRATCH ]]; then
+        [[ -d $SCRATCH && ! -L $SCRATCH && -O $SCRATCH ]] || die "refused: $SCRATCH is not a folder this user owns"
+    else
+        mkdir -m 700 "$SCRATCH"
+    fi
+    mkdir -p "$SCRATCH/trees" "$SCRATCH/consumers"
+    local marker
+    while IFS= read -r -d '' marker; do
+        remove_item "$(dirname "$marker")" >/dev/null 2>&1 || true
+    done < <(find "$SCRATCH/trees" "$SCRATCH/consumers" -mindepth 2 -maxdepth 2 -name "$MARKER" -mtime +0 -print0)
+}
+
+# Prints each distinct compiler warning in the build log $1 once, with the frameworks it appeared in, then the count.
+report_warnings() {
+    sed -nE 's/^[[:space:]]*(.+)\(([0-9]+),[0-9]+\): warning ([A-Z]+[0-9]+): (.*) \[([^]]*)\]$/\1:\2\t\3\t\4\t\5/p' "$1" |
+        awk -F'\t' -v prefix="$(realpath -m -- "$SCRATCH")/" '
+            {
+                file = $1
+                if (index(file, prefix) == 1) file = substr(file, length(prefix) + 1)
+                tfm = ""
+                if (match($4, /TargetFramework=[^]]*/)) tfm = substr($4, RSTART + 16, RLENGTH - 16)
+                key = file "\t" $2 "\t" $3
+                if (!(key in tfms)) { order[++n] = key; tfms[key] = "" }
+                if (tfm != "" && index("," tfms[key] ",", "," tfm ",") == 0) tfms[key] = tfms[key] (tfms[key] == "" ? "" : ",") tfm
+            }
+            END {
+                for (i = 1; i <= n; i++) {
+                    split(order[i], p, "\t")
+                    printf "warning %s %s %s%s\n", p[1], p[2], p[3], (tfms[order[i]] == "" ? "" : " [" tfms[order[i]] "]")
+                }
+                printf "warnings: %d\n", n
+            }'
+}
+
+# For each "// PROBE <tag>: <codes>" line in the consumer's Probes.cs, prints the warnings the build log $1 has there.
+report_probes() {
+    local log=$1 probes=$2 n=0 line got
+    while IFS= read -r line; do
+        n=$((n + 1))
+        [[ $line =~ //\ PROBE\ ([a-z0-9-]+):\ (.*)$ ]] || continue
+        got=$(sed -nE "s/^.*\/Probes\.cs\($n,[0-9]+\): warning ([A-Z]+[0-9]+):.*/\1/p" "$log" | sort -u | paste -sd, -)
+        printf 'probe %s (Probes.cs:%d): got %s; an annotated provider gives %s\n' \
+            "${BASH_REMATCH[1]}" "$n" "${got:-none}" "${BASH_REMATCH[2]}"
+    done < "$probes"
+}
+
+cmd_doctor() {
+    local failed=0 conn server host port entry
+    if dotnet --list-sdks 2>/dev/null | grep -qE '^(9|[1-9][0-9])\.'; then
+        echo "ok: a .NET SDK 9 or later"
+    else
+        echo "fail: no .NET SDK 9 or later on PATH"; failed=1
+    fi
+    echo "ok: repository $REPO_ROOT at $(git -C "$REPO_ROOT" rev-parse --short=12 HEAD)"
+    conn=${SPECIFICATION_TEST_SQL_SERVER:-$DEFAULT_SQL}
+    server=$(tr ';' '\n' <<<"$conn" | sed -nE 's/^[[:space:]]*(server|data source|address|addr)[[:space:]]*=[[:space:]]*(tcp:)?//Ip' | head -1)
+    host=${server%%,*}
+    port=1433
+    [[ $server == *,* ]] && port=${server##*,}
+    if timeout 3 bash -c "exec 3<>/dev/tcp/$host/$port" 2>/dev/null; then
+        echo "ok: SQL Server accepts connections on $host:$port (the first run checks the login)"
+    else
+        echo "fail: nothing accepts connections on $host:$port; start spec-sql as CONTRIBUTING.md shows"; failed=1
+    fi
+    if [[ -d $(dirname "$LOCK") ]]; then
+        echo "ok: the shared lock is $LOCK"
+    else
+        echo "fail: $(dirname "$LOCK") is missing, so the shared lock can't be taken"; failed=1
+    fi
+    if [[ ! -e $SCRATCH ]]; then
+        echo "ok: no scratch root yet; the first tree makes $SCRATCH"
+    elif [[ -d $SCRATCH && ! -L $SCRATCH && -O $SCRATCH ]]; then
+        echo "ok: scratch root $SCRATCH"
+        for entry in "$SCRATCH"/trees/* "$SCRATCH"/consumers/*; do
+            [[ -f $entry/$MARKER ]] && echo "  ${entry#"$SCRATCH"/} from $(head -1 "$entry/$MARKER")"
+        done
+    else
+        echo "fail: $SCRATCH is not a folder this user owns"; failed=1
+    fi
+    return $failed
+}
+
+cmd_tree() {
+    [[ $# -eq 1 ]] || die "usage: verify tree <git ref>"
+    local sha dir
+    sha=$(git -C "$REPO_ROOT" rev-parse --verify --quiet "$1^{commit}") || die "no commit named $1"
+    ensure_scratch
+    dir="$SCRATCH/trees/${sha:0:12}"
+    if [[ -e $dir || -L $dir ]]; then
+        item trees "$dir" >/dev/null
+    else
+        mkdir "$dir"
+        git -C "$REPO_ROOT" archive "$sha" | tar -x -C "$dir"
+        printf '%s\n' "$sha" > "$dir/$MARKER"
+    fi
+    printf '%s\n' "$dir"
+}
+
+cmd_consumer() {
+    [[ $# -eq 1 || $# -eq 2 ]] || die "usage: verify consumer <tree> [<name>]"
+    local tree name dir provider old
+    tree=$(item trees "$1")
+    name=${2:-$(basename "$tree")}
+    [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "refused: the name $name must be letters, digits, dots, dashes or underscores"
+    provider="$tree/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"
+    [[ -f $provider ]] || die "$tree has no EF6 provider project"
+    ensure_scratch
+    dir="$SCRATCH/consumers/$name"
+    if [[ -e $dir || -L $dir ]]; then
+        old=$(item consumers "$dir")
+        rm -rf -- "$old"
+    fi
+    mkdir "$dir"
+    cp "$SKILL_DIR/consumer-template/Program.cs" "$SKILL_DIR/consumer-template/Probes.cs" "$dir/"
+    sed "s|@PROVIDER@|$provider|" "$SKILL_DIR/consumer-template/Consumer.csproj.in" > "$dir/Consumer.csproj"
+    printf 'tree %s\n' "$(head -1 "$tree/$MARKER")" > "$dir/$MARKER"
+    printf '%s\n' "$dir"
+}
+
+cmd_build() {
+    [[ $# -eq 1 ]] || die "usage: verify build <consumer>"
+    local dir status=0
+    dir=$(item consumers "$1")
+    dotnet build "$dir/Consumer.csproj" --no-incremental -nologo -tl:off -clp:NoSummary > "$dir/build.log" 2>&1 || status=$?
+    report_warnings "$dir/build.log"
+    report_probes "$dir/build.log" "$dir/Probes.cs"
+    echo "build: exit $status"
+    [[ $status -eq 0 ]] || grep -E ': error ' "$dir/build.log" | sort -u >&2
+    return $status
+}
+
+cmd_run() {
+    [[ $# -eq 1 ]] || die "usage: verify run <consumer>"
+    local dir
+    dir=$(item consumers "$1")
+    dotnet build "$dir/Consumer.csproj" -nologo -tl:off -v:quiet > "$dir/run-build.log" 2>&1 \
+        || { cat "$dir/run-build.log" >&2; die "the consumer doesn't build; run verify build for its warnings and errors"; }
+    SPECIFICATION_TEST_SQL_SERVER=${SPECIFICATION_TEST_SQL_SERVER:-$DEFAULT_SQL} \
+        flock "$LOCK" dotnet run --project "$dir/Consumer.csproj" --no-build
+}
+
+cmd_warnings() {
+    [[ $# -ge 1 ]] || die "usage: verify warnings <tree>/<path>.csproj [-p:Nullable=<value>]"
+    local root resolved rest tree status=0 log property
+    root=$(realpath -m -- "$SCRATCH")
+    resolved=$(realpath -m -- "$1")
+    rest=${resolved#"$root"/trees/}
+    [[ $rest != "$resolved" && $rest == */* ]] || die "refused: $1 is not inside a tree from verify tree"
+    tree=$(item trees "$root/trees/${rest%%/*}")
+    [[ -f $resolved && $resolved == *.csproj ]] || die "$1 is not a .csproj file"
+    shift
+    # Only the nullable context, so no property can move the build's output out of the tree.
+    for property in "$@"; do
+        [[ $property =~ ^-p:Nullable=(enable|disable|warnings|annotations)$ ]] || die "refused: $property is not -p:Nullable=<value>"
+    done
+    log="$tree/warnings-$(basename "$resolved" .csproj).log"
+    dotnet build "$resolved" --no-incremental -nologo -tl:off -clp:NoSummary "$@" > "$log" 2>&1 || status=$?
+    report_warnings "$log"
+    echo "build: exit $status"
+    [[ $status -eq 0 ]] || grep -E ': error ' "$log" | sort -u >&2
+    return $status
+}
+
+cmd_cleanup() {
+    local entry failed=0
+    if [[ $# -gt 0 ]]; then
+        for entry in "$@"; do remove_item "$entry" || failed=2; done
+        return $failed
+    fi
+    [[ -d $SCRATCH ]] || { echo "nothing to clean: $SCRATCH doesn't exist"; return 0; }
+    [[ ! -L $SCRATCH && -O $SCRATCH ]] || die "refused: $SCRATCH is not a folder this user owns"
+    for entry in "$SCRATCH"/trees/* "$SCRATCH"/consumers/*; do
+        [[ -e $entry || -L $entry ]] || continue
+        remove_item "$entry" || failed=2
+    done
+    rmdir "$SCRATCH/trees" "$SCRATCH/consumers" "$SCRATCH" 2>/dev/null || true
+    return $failed
+}
+
+command=${1:-help}
+[[ $# -gt 0 ]] && shift
+case $command in
+    doctor) cmd_doctor "$@" ;;
+    tree) cmd_tree "$@" ;;
+    consumer) cmd_consumer "$@" ;;
+    build) cmd_build "$@" ;;
+    run) cmd_run "$@" ;;
+    warnings) cmd_warnings "$@" ;;
+    cleanup) cmd_cleanup "$@" ;;
+    help | -h | --help) usage ;;
+    *) usage >&2; exit 2 ;;
+esac
