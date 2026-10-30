@@ -1,4 +1,5 @@
 ﻿using System.Data.Entity;
+using System.Linq.Expressions;
 using NSubstitute;
 
 namespace Tests.Evaluators;
@@ -43,5 +44,18 @@ public class IncludeEvaluatorCustomSpecTests(TestFactory factory) : IntegrationT
         var expectedSql = GetQueryString(DbContext, expected);
 
         actualSql.Should().Be(expectedSql);
+    }
+
+    [Fact]
+    public void Throws_GivenThenIncludeExpressionWithNoIncludeBefore()
+    {
+        Expression<Func<Product, List<ProductImage>?>> images = x => x.Images;
+        var spec = Substitute.For<ISpecification<Store>>();
+        spec.IncludeExpressions.Returns([new IncludeExpressionInfo(images, typeof(Product))]);
+
+        var action = () => _evaluator.GetQuery(DbContext.Stores, spec);
+
+        action.Should().Throw<ArgumentException>()
+            .WithMessage("*ThenInclude with no Include before it*");
     }
 }

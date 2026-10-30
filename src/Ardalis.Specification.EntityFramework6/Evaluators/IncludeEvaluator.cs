@@ -26,15 +26,17 @@ public class IncludeEvaluator : IEvaluator
         string? path = null;
         foreach (var includeExpression in specification.IncludeExpressions)
         {
-            var navigation = GetPath(includeExpression.LambdaExpression);
-            if (includeExpression.Type == IncludeTypeEnum.ThenInclude && path is not null)
+            if (includeExpression.Type == IncludeTypeEnum.Include)
             {
-                path = $"{path}.{navigation}";
-                continue;
+                if (path is not null) query = query.Include(path);
+                path = GetPath(includeExpression.LambdaExpression);
             }
-
-            if (path is not null) query = query.Include(path);
-            path = navigation;
+            else if (includeExpression.Type == IncludeTypeEnum.ThenInclude)
+            {
+                path = path is null
+                    ? throw new ArgumentException($"The include expression '{includeExpression.LambdaExpression}' is a ThenInclude with no Include before it.", nameof(specification))
+                    : $"{path}.{GetPath(includeExpression.LambdaExpression)}";
+            }
         }
 
         return path is null ? query : query.Include(path);
