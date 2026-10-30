@@ -1,4 +1,5 @@
-// Compile-only probes of the EF6 provider's nullable annotations, as a caller with nullable enabled meets them.
+// Compile-only probes of the EF6 provider's nullable annotations, and of where a `default` or `null` argument to a
+// DbSet extension binds, as a caller with nullable enabled meets them.
 // Nothing calls these methods. `verify build` lists the warnings each PROBE line raises, beside the codes a provider
 // annotated like the EF Core one gives; against a provider without annotations every probe gets none.
 using Ardalis.Specification;
@@ -31,3 +32,16 @@ static class Probes
         _ = await repo.GetByIdAsync<string?>("id"); // PROBE get-by-id-nullable-id-type: CS8714
     }
 }
+
+#if DBSET_READS
+// #11's DbSet extensions. A `default` or `null` argument binds to their specification overload, whose parameter isn't
+// nullable, so it warns. EF6's own overloads have no annotations, and wouldn't.
+static class DbSetProbes
+{
+    static async Task PassDefault(ShopContext db)
+    {
+        _ = await db.Companies.FirstOrDefaultAsync(default); // PROBE dbset-first-default: CS8625
+        _ = await db.Companies.FirstOrDefaultAsync(null); // PROBE dbset-first-null: CS8625
+    }
+}
+#endif

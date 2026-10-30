@@ -25,7 +25,7 @@ Preconditions:
 - `verify doctor` passes.
 - `C` is a consumer from `verify efcore-consumer`.
 
-- **Run.** Run `verify run "$C"`. It exits 0 and prints these lines in this order. With #34's fix they read:
+- **Run.** Run `verify run "$C"`. It exits 0 and prints these lines first, in this order, then the lines of [DbSet read extensions](./dbset-read-extensions.md). With #34's fix they read:
 
   ```
   repository-async-enumerable: Albania, Andorra, Austria
@@ -44,5 +44,5 @@ Preconditions:
 - Main before #34's fix, at `2f2c918`, prints `<none> then ObjectDisposedException` on `factory-async-enumerable`, `-break`, `-cancel` and both passes of `-twice`. Its `-unenumerated` line reads `1 context made, 1 disposed`, because that code makes the context when the method is called.
 - A `factory-async-enumerable-cancel` line that lists all three names means the repository dropped the caller's token. A `factory-` line with fewer contexts disposed than made means a context leaked.
 - The cancel lines show `TaskCanceledException`, which SqlClient throws for EF Core. It derives from `OperationCanceledException`.
-- `verify build` prints no probe lines for this consumer, since it has no `Probes.cs`.
+- This feature has no probes. `verify build` prints the probe lines of [DbSet read extensions](./dbset-read-extensions.md) for this consumer.
 - A run waits while the test suite holds the shared lock. A long pause before the first line is the lock.

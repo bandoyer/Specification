@@ -175,6 +175,29 @@ static class Shop
         await Print<Store>("dbset-to-enumerable", async (_, db) => Sorted((await db.Stores.ToEnumerableAsync(Spec<Store>(q => q.Where(s => s.City == "Durres")))).Select(s => s.Name)));
         await Print<Store>("with-specification", async (_, db) => Sorted(await db.Stores.WithSpecification(Spec<Store>(q => q.Where(s => s.Company.Name == "Initech"))).Select(s => s.Name).ToListAsync()));
         await Print<Company>("with-specification-projected", async (_, db) => string.Join(", ", await db.Companies.WithSpecification(Spec<Company, string>(q => { q.OrderBy(c => c.Name); q.Select(c => c.Name); })).ToListAsync()));
+#if DBSET_READS
+        // #11's DbSet extensions, with the specifications the EF Core consumer runs. The ! on default and null keeps
+        // their warning to Probes.cs, and changes no binding.
+        await Print<Company>("dbset-first", async (_, db) => Show((await db.Companies.FirstOrDefaultAsync(Reads.CompanyNamed("Globex")))?.Name));
+        await Print<Company>("dbset-first-missing", async (_, db) => Show((await db.Companies.FirstOrDefaultAsync(Reads.CompanyNamed("Nope")))?.Name));
+        await Print<Company>("dbset-first-projected", async (_, db) => Show(await db.Companies.FirstOrDefaultAsync(Reads.CountryOf("Initech"))));
+        await Print<Company>("dbset-first-projected-missing", async (_, db) => Show(await db.Companies.FirstOrDefaultAsync(Reads.CountryOf("Nope"))));
+        await Print<Company>("dbset-single", async (_, db) => Show((await db.Companies.SingleOrDefaultAsync(Reads.OnlyCompanyNamed("Initech")))?.Name));
+        await Print<Company>("dbset-single-missing", async (_, db) => Show((await db.Companies.SingleOrDefaultAsync(Reads.OnlyCompanyNamed("Nope")))?.Name));
+        await Print<Company>("dbset-single-two-matches", (_, db) => Reads.OrException(async () => Show((await db.Companies.SingleOrDefaultAsync(Reads.OnlyCompanyIn("Norway")))?.Name)));
+        await Print<Company>("dbset-single-projected", async (_, db) => Show(await db.Companies.SingleOrDefaultAsync(Reads.OnlyCountryOf("Acme"))));
+        await Print<Company>("dbset-single-projected-missing", async (_, db) => Show(await db.Companies.SingleOrDefaultAsync(Reads.OnlyCountryOf("Nope"))));
+        await Print<Product>("dbset-count-ignores-paging", async (_, db) => (await db.Products.CountAsync(Reads.PricierThanSixPaged())).ToString());
+        await Print<Product>("dbset-any-match", async (_, db) => (await db.Products.AnyAsync(Reads.ProductNamed("Lamp"))).ToString());
+        await Print<Product>("dbset-any-missing", async (_, db) => (await db.Products.AnyAsync(Reads.ProductNamed("Nope"))).ToString());
+        await Print<Product>("dbset-any-ignores-paging", async (_, db) => (await db.Products.AnyAsync(Reads.ProductNamed("Lamp", skip: 1))).ToString());
+        await Print<Store>("dbset-to-list-projected", async (_, db) => string.Join(", ", await db.Stores.ToListAsync(Reads.GlobexCities())));
+        await Print<Store>("dbset-to-list-projected-post-processing", async (_, db) => string.Join(", ", await db.Stores.ToListAsync(Reads.GlobexCities(reversed: true))));
+        await Print<Store>("dbset-to-enumerable-projected", async (_, db) => string.Join(", ", await db.Stores.ToEnumerableAsync(Reads.GlobexCities())));
+        await Print<Store>("dbset-to-list-no-selector", (_, db) => Reads.OrException(async () => string.Join(", ", await db.Stores.ToListAsync(new Specification<Store, string>()))));
+        await Print<Company>("dbset-first-default", (_, db) => Reads.OrException(async () => Show((await db.Companies.FirstOrDefaultAsync(default!))?.Name)));
+        await Print<Company>("dbset-first-null", (_, db) => Reads.OrException(async () => Show((await db.Companies.FirstOrDefaultAsync(null!))?.Name)));
+#endif
     }
 
     static Specification<T> Spec<T>(Action<ISpecificationBuilder<T>> build)

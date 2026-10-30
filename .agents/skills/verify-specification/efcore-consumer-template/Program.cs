@@ -1,7 +1,8 @@
 // The EF Core provider's consumer. It seeds a database of its own on SQL Server, then enumerates AsAsyncEnumerable
 // through RepositoryBase<T> and through ContextFactoryRepositoryBaseOfT, whose factory counts the contexts it makes and
-// how many of them are disposed. It prints one "label: result" line per query, and drops the database. `verify run`
-// runs it. The output holds no ids or paths, so two trees' outputs compare with diff.
+// how many of them are disposed. Then it queries a shop through the DbSet extensions (Shop.cs). It prints one
+// "label: result" line per query, and drops the database. `verify run` runs it. The output holds no ids or paths, so
+// two trees' outputs compare with diff.
 using Ardalis.Specification;
 using Ardalis.Specification.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
@@ -26,11 +27,13 @@ await using (var db = new AtlasContext(options))
     await db.Database.EnsureCreatedAsync();
     db.Countries.AddRange(new[] { "Norway", "Austria", "Belgium", "Albania", "Andorra" }.Select(name => new Country { Name = name }));
     await db.SaveChangesAsync();
+    await Shop.Seed(db);
 }
 
 try
 {
     await Atlas.Query(options);
+    await Shop.Query(options);
 }
 finally
 {
@@ -110,6 +113,12 @@ public sealed class AtlasContext(DbContextOptions<AtlasContext> options) : DbCon
 {
     public bool Disposed { get; private set; }
     public DbSet<Country> Countries => Set<Country>();
+    public DbSet<Company> Companies => Set<Company>();
+    public DbSet<Store> Stores => Set<Store>();
+    public DbSet<Product> Products => Set<Product>();
+
+    // decimal(18,2), the EF6 consumer's column.
+    protected override void OnModelCreating(ModelBuilder modelBuilder) => modelBuilder.Entity<Product>().Property(p => p.Price).HasPrecision(18, 2);
 
     public override void Dispose()
     {
