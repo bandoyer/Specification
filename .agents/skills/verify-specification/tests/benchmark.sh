@@ -99,11 +99,24 @@ compare() {
 REPORT=$SAME_PROCESS LOG= \
     compare "#7's same-process report passes" 0 "compare OneKey: allocated 1616 B, then 1488 B; Ratio 1.00, RatioSD 0.02" \
     NoOrder OneKey TwoKeys FourKeys
+# The stand-in builds nothing, so this checks what the copy holds for the real build: each of the provider's global
+# usings as a plain using, the provider's parent namespace, no byte order mark (the tree's GlobalUsings.cs and
+# OrderEvaluator.cs each start with one), and the namespace MergeBase.
 copy=$SCRATCH/consumers/$(basename "$COMPARED")/MergeBase/Evaluators/OrderEvaluator.cs
-if grep -q '^namespace MergeBase;$' "$copy" && ! grep -q '^namespace Ardalis' "$copy"; then
-    pass "compare compiles the base's file in, in the namespace MergeBase"
+problems=
+grep -q $'\xEF\xBB\xBF' "$copy" && problems+=" a byte order mark;"
+grep -q '^global using ' "$copy" && problems+=" a global using;"
+names=$(grep -o 'global using [A-Za-z0-9_.]*;' "$TREE/src/Ardalis.Specification.EntityFramework6/GlobalUsings.cs" | sed 's/^global using //; s/;$//')
+[[ -n $names ]] || problems+=" no global using in the tree's GlobalUsings.cs to check;"
+for name in $names; do
+    grep -qx "using $name;" "$copy" || problems+=" no using $name;"
+done
+grep -qx 'using Ardalis.Specification;' "$copy" || problems+=" no using Ardalis.Specification;"
+grep -qx 'namespace MergeBase;' "$copy" && ! grep -q '^namespace Ardalis' "$copy" || problems+=" $(grep -m1 '^namespace' "$copy" 2>&1);"
+if [[ -z $problems ]]; then
+    pass "compare copies the base's file in with the provider's usings, in the namespace MergeBase"
 else
-    fail "compare's copy of the base's OrderEvaluator.cs: $(grep -m1 '^namespace' "$copy" 2>&1)"
+    fail "compare's copy of the base's OrderEvaluator.cs has$problems"
 fi
 
 # The same report without its Ratio and RatioSD columns, as BenchmarkDotNet writes it when no method is the baseline.
