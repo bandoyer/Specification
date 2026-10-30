@@ -1,6 +1,6 @@
 # DbSet read extensions
 
-A developer reads through a specification straight from a `DbSet`, in either provider, without a repository: `FirstOrDefaultAsync`, `SingleOrDefaultAsync`, `CountAsync` and `AnyAsync`, the projection overloads of those and of `ToListAsync` and `ToEnumerableAsync`, and, in EF Core only, `AsAsyncEnumerable`. #11 added them. Each applies the specification as the repository's method of the same name does. A `default` or `null` passed as the only argument binds to the specification overload, which throws `ArgumentNullException`.
+A developer reads through a specification straight from a `DbSet`, in either provider, without a repository: `FirstOrDefaultAsync`, `SingleOrDefaultAsync`, `CountAsync` and `AnyAsync`, the projection overloads of the first two and of `ToListAsync` and `ToEnumerableAsync`, and, in EF Core only, `AsAsyncEnumerable`. #11 added them. Each applies the specification as the repository's method of the same name does. A `default` or `null` passed as the only argument binds to the specification overload, which throws `ArgumentNullException`.
 
 ## Sub-features
 
@@ -25,7 +25,7 @@ Preconditions:
 - `verify doctor` passes.
 - `C` is a consumer from `verify consumer`, and `E` one from `verify efcore-consumer`, both made from a tree that has #11's methods. Each command looks for `FirstOrDefaultAsync` in its provider's `DbSetExtensions.cs` in the tree. When it finds it, the consumer's `DBSET_READS` lines build.
 
-- **Run.** Run `verify run "$C" > ef6.txt` and `verify run "$E" > efcore.txt`. Each exits 0. The EF6 lines follow [EF6 repository queries](./ef6-repository-queries.md)'s `with-specification-projected`, and the EF Core lines follow [EF Core context-factory repository](./efcore-context-factory-repository.md)'s seven lines. At 84ff252, the merge of main with #37 into this branch, they read:
+- **Run.** Run `verify run "$C" > ef6.txt` and `verify run "$E" > efcore.txt`. Each exits 0. The EF6 lines follow [EF6 repository queries](./ef6-repository-queries.md)'s `with-specification-projected`, and the EF Core lines follow [EF Core context-factory repository](./efcore-context-factory-repository.md)'s seven lines. At 84ff252, where #11's branch merged main with #37, they read:
 
   ```
   dbset-first: Globex
@@ -60,7 +60,7 @@ Preconditions:
 
   The `efcore-dbset-*` lines between `first` and `first-null` read as the EF6 lines do.
 - **Compare the providers.** Run `diff <(sed -n 's/^dbset-//p' ef6.txt) <(sed -n 's/^efcore-dbset-//p' efcore.txt)`. It prints only `> as-async-enumerable: Acme Durres, Acme Tirana`, since EF6 has no `AsAsyncEnumerable`. Before calling the rest equal, check that each run printed each line above with its rows.
-- **Probes.** Run `tests/probes.sh`. It builds both consumers from HEAD and from main before #11, at 9fb6d84, each with LF and then CRLF probe files, and exits 0. Its `consumer with:` lines show `dbset-first-default` and `dbset-first-null` each getting CS8625, and its `efcore-consumer with:` lines show `efcore-dbset-first-default` and `efcore-dbset-first-null` each getting CS8625. Its `ok:` lines say the builds without the extensions printed no DbSet probe, and that CRLF changed no probe line.
+- **Probes.** Run `tests/probes.sh`. It builds both consumers from HEAD and from main before #11, at 9fb6d84, first with LF probe files and then with CRLF ones, and exits 0. The EF Core consumer from 9fb6d84 has no probe file. Its `consumer with:` lines show `dbset-first-default` and `dbset-first-null` each getting CS8625, and its `efcore-consumer with:` lines show `efcore-dbset-first-default` and `efcore-dbset-first-null` each getting CS8625. Its `ok:` lines say the builds without the extensions printed no DbSet probe, and that CRLF changed no probe line.
 
 ## Gotchas
 

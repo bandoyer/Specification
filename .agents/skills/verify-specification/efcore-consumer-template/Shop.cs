@@ -54,7 +54,8 @@ static class Shop
         await Print("efcore-dbset-to-list", async db => Sorted((await db.Stores.ToListAsync(Reads.StoresIn("Oslo"))).Select(s => s.Name)));
         await Print("efcore-dbset-to-enumerable", async db => Sorted((await db.Stores.ToEnumerableAsync(Reads.StoresIn("Durres"))).Select(s => s.Name)));
 #if DBSET_READS
-        // #11's DbSet extensions. The ! on default and null keeps their warning to Probes.cs, and changes no binding.
+        // #11's DbSet extensions. The ! on default and null keeps their warning to with-dbset-reads/DbSetProbes.cs, and
+        // changes no binding.
         await Print("efcore-dbset-first", async db => Show((await db.Companies.FirstOrDefaultAsync(Reads.CompanyNamed("Globex")))?.Name));
         await Print("efcore-dbset-first-missing", async db => Show((await db.Companies.FirstOrDefaultAsync(Reads.CompanyNamed("Nope")))?.Name));
         await Print("efcore-dbset-first-projected", async db => Show(await db.Companies.FirstOrDefaultAsync(Reads.CountryOf("Initech"))));

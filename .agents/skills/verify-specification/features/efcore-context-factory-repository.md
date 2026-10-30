@@ -44,5 +44,5 @@ Preconditions:
 - Main before #34's fix, at `2f2c918`, prints `<none> then ObjectDisposedException` on `factory-async-enumerable`, `-break`, `-cancel` and both passes of `-twice`. Its `-unenumerated` line reads `1 context made, 1 disposed`, because that code makes the context when the method is called.
 - A `factory-async-enumerable-cancel` line that lists all three names means the repository dropped the caller's token. A `factory-` line with fewer contexts disposed than made means a context leaked.
 - The cancel lines show `TaskCanceledException`, which SqlClient throws for EF Core. It derives from `OperationCanceledException`.
-- This feature has no probes. `verify build` prints the probe lines of [DbSet read extensions](./dbset-read-extensions.md) for this consumer.
-- A run waits while the test suite holds the shared lock. A long pause before the first line is the lock.
+- This feature has no probes. For a consumer from a tree with #11's DbSet extensions, `verify build` prints the probe lines of [DbSet read extensions](./dbset-read-extensions.md).
+- A run waits while the test suite holds the shared lock, and the first run of a consumer `verify build` hasn't built builds it first. A long pause before the first line is one of those.
