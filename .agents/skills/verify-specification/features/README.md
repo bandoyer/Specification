@@ -32,5 +32,6 @@ Each feature file starts with an H1 title and a paragraph on what a developer us
 - [EF6 include chains](./ef6-include-chains.md): two `Include` and `ThenInclude` chains in one specification, as a repository loads them.
 - [EF6 include strings](./ef6-include-strings.md): navigations loaded by include strings, the SQL EF6 builds for them, and a custom evaluator list holding one include evaluator.
 - [EF Core context-factory repository](./efcore-context-factory-repository.md): `AsAsyncEnumerable` through `ContextFactoryRepositoryBaseOfT`, and whether each context its factory made is disposed, whether the caller reads every row, stops early, or never starts.
+- [Query builder](./query-builder.md): reading `Query` through the specification classes and through `ISpecification<T>`, a specification class that implements `ISpecification<T>` without it, and the XML docs of the classes' `Query`.
 
 Of the EF Core provider, the map covers only the context-factory repository's `AsAsyncEnumerable`. It doesn't cover the rest of that provider, the core library's in-memory evaluation, or the sample apps yet. A run that changes one adds its file here.
