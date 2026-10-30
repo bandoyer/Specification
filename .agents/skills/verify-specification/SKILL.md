@@ -1,11 +1,11 @@
 ---
 name: verify-specification
-description: Drives the Specification library's EF6 provider as a consuming project does. It builds a nullable-enabled console consumer against any commit and runs its queries on the spec-sql SQL Server. Use it to verify, smoke-test or compare a change to src/Ardalis.Specification.EntityFramework6.
+description: Drives the Specification library's EF6 provider, and both providers' DbSet extensions, as a consuming project does. It builds a nullable-enabled console consumer against any commit and runs its queries on the spec-sql SQL Server. Use it to verify, smoke-test or compare a change to src/Ardalis.Specification.EntityFramework6 or to either provider's DbSetExtensions.
 ---
 
 # Verify the Specification library
 
-The library has no app of its own. Its user is a developer whose project references a provider package, so this skill stands in for that project with a **consumer**: a net9.0 console project with nullable enabled, built against one commit's EF6 provider. Its build shows the warnings a caller gets. Its run queries SQL Server through `RepositoryBase<T>` and the `DbSet` extensions. [features/README.md](features/README.md) maps what each recipe drives.
+The library has no app of its own. Its user is a developer whose project references a provider package, so this skill stands in for that project with a **consumer**: a net9.0 console project with nullable enabled, built against one commit's EF6 and EF Core providers. Its build shows the warnings a caller gets. Its run queries SQL Server through the EF6 provider's `RepositoryBase<T>` and both providers' `DbSet` extensions. [features/README.md](features/README.md) maps what each recipe drives.
 
 Every step goes through one helper, `.agents/skills/verify-specification/bin/verify`, called `verify` below; `verify help` lists its commands. In a skillflow run, prefix each call with skillflow's `bin/sandbox`.
 
@@ -44,6 +44,6 @@ A comparison keeps both outputs and their diff. Before it calls two outputs equa
 ## Helpers
 
 - `bin/verify` is the CLI above. Its scratch root is `/tmp/verify-specification-<uid>`, with mode 700. The repository's `.gitignore` ignores every `bin/` folder and every `*.log` file, so a new file there, or a saved log such as a test's fixture, needs `git add -f`.
-- `consumer-template/` holds the consumer. `Program.cs` has the queries and `Probes.cs` the compile-only nullable probes. A run that needs another query or probe adds it there, and adds its sub-feature to the feature map.
+- `consumer-template/` holds the consumer. `Program.cs` has the queries and `Probes.cs` the compile-only nullable probes. `EfCore.cs` queries Program.cs's tables through the EF Core provider, with the specifications `DbSetReads.cs` shares between the two. A line that calls #11's DbSet extensions sits under `#if DBSET_READS`, which `verify consumer` defines only for a tree that has them. A run that needs another query or probe adds it there, and adds its sub-feature to the feature map.
 - `benchmark-template/` holds the project file `verify benchmark` writes beside a workload. `tests/benchmark.sh` plays saved BenchmarkDotNet runs back through a stand-in dotnet: one with allocations, two that measured nothing and exited 0, and #7's same-process comparison, whole and without its Ratio and RatioSD columns.
 - `tests/guards.sh` locks the guards on cleanup and on each command that writes. `tests/warnings.sh` checks that the warning report reads every form MSBuild and NuGet write. It builds the two projects in `tests/msbuild-warnings/` for real, and feeds the forms they can't yield through a stand-in dotnet. The `[pr]` suite in `skillflow.toml` runs every script in `tests/`. Run them after any change to `bin/verify`.

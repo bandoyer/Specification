@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# verify: builds and runs a consumer of the EF6 provider, the way a project that references the package does.
+# verify: builds and runs a consumer of the EF6 provider, and of the EF Core provider's DbSet extensions, the way a
+# project that references the packages does.
 # `verify help` lists the commands. Everything it makes lives under one scratch root on /tmp.
 set -euo pipefail
 
@@ -21,7 +22,8 @@ usage() {
     cat <<EOF
 verify doctor                    check the SDK, the SQL Server port, the lock, and the scratch items
 verify tree <git ref>            export that commit of this repository into the scratch root; prints its folder
-verify consumer <tree> [<name>]  make a consumer project that references the tree's EF6 provider; prints its folder
+verify consumer <tree> [<name>]  make a consumer project that references the tree's EF6 and EF Core providers;
+                                 prints its folder
 verify build <consumer>          build the consumer; prints each distinct warning and each probe's warnings
 verify run <consumer>            run the consumer against SQL Server under the shared lock; prints one line per query
 verify warnings <tree>/<path>.csproj [-p:Nullable=<value>]
@@ -130,11 +132,14 @@ report_warnings() {
 }
 
 # For each "// PROBE <tag>: <codes>" line in the consumer's Probes.cs, prints the warnings the build log $1 has there.
+# A probe under "#if DBSET_READS" counts only when $3 is yes, since a consumer from a tree before #11 doesn't build it.
 report_probes() {
-    local log=$1 probes=$2 n=0 line got
+    local log=$1 probes=$2 reads=$3 n=0 line got skip=0
     while IFS= read -r line; do
         n=$((n + 1))
-        [[ $line =~ //\ PROBE\ ([a-z0-9-]+):\ (.*)$ ]] || continue
+        [[ $line == '#if DBSET_READS' && $reads != yes ]] && skip=1
+        [[ $line == '#endif' ]] && skip=0
+        [[ $skip -eq 0 && $line =~ //\ PROBE\ ([a-z0-9-]+):\ (.*)$ ]] || continue
         got=$(sed -nE "s/^.*\/Probes\.cs\($n,[0-9]+\): warning ([A-Z]+[0-9]+):.*/\1/p" "$log" | sort -u | paste -sd, -)
         printf 'probe %s (Probes.cs:%d): got %s; an annotated provider gives %s\n' \
             "${BASH_REMATCH[1]}" "$n" "${got:-none}" "${BASH_REMATCH[2]}"
@@ -195,33 +200,40 @@ cmd_tree() {
 
 cmd_consumer() {
     [[ $# -eq 1 || $# -eq 2 ]] || die "usage: verify consumer <tree> [<name>]"
-    local tree name dir provider old
+    local tree name dir provider efcore defines= old
     # First, so its removal of day-old items can't take the tree this checks.
     ensure_scratch
     tree=$(item trees "$1")
     name=${2:-$(basename "$tree")}
     [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "refused: the name $name must be letters, digits, dots, dashes or underscores"
     provider="$tree/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"
+    efcore="$tree/src/Ardalis.Specification.EntityFrameworkCore/Ardalis.Specification.EntityFrameworkCore.csproj"
     [[ -f $provider ]] || die "$tree has no EF6 provider project"
+    [[ -f $efcore ]] || die "$tree has no EF Core provider project"
+    # #11's DbSet extensions; the consumer's DBSET_READS lines call them.
+    grep -q FirstOrDefaultAsync "$tree/src/Ardalis.Specification.EntityFramework6/Extensions/DbSetExtensions.cs" 2>/dev/null \
+        && defines=';DBSET_READS'
     dir="$SCRATCH/consumers/$name"
     if [[ -e $dir || -L $dir ]]; then
         old=$(item consumers "$dir")
         rm -rf -- "$old"
     fi
     mkdir "$dir"
-    cp "$SKILL_DIR/consumer-template/Program.cs" "$SKILL_DIR/consumer-template/Probes.cs" "$dir/"
-    sed "s|@PROVIDER@|$provider|" "$SKILL_DIR/consumer-template/Consumer.csproj.in" > "$dir/Consumer.csproj"
+    cp "$SKILL_DIR"/consumer-template/*.cs "$dir/"
+    sed -e "s|@PROVIDER@|$provider|" -e "s|@EFCORE_PROVIDER@|$efcore|" -e "s|@DEFINES@|$defines|" \
+        "$SKILL_DIR/consumer-template/Consumer.csproj.in" > "$dir/Consumer.csproj"
     printf 'tree %s\n' "$(head -1 "$tree/$MARKER")" > "$dir/$MARKER"
     printf '%s\n' "$dir"
 }
 
 cmd_build() {
     [[ $# -eq 1 ]] || die "usage: verify build <consumer>"
-    local dir status=0
+    local dir status=0 reads=no
     dir=$(item consumers "$1")
+    grep -qF ';DBSET_READS</DefineConstants>' "$dir/Consumer.csproj" && reads=yes
     dotnet build "$dir/Consumer.csproj" --no-incremental -nologo -tl:off -clp:NoSummary > "$dir/build.log" 2>&1 || status=$?
     report_warnings "$dir/build.log"
-    report_probes "$dir/build.log" "$dir/Probes.cs"
+    report_probes "$dir/build.log" "$dir/Probes.cs" "$reads"
     echo "build: exit $status"
     [[ $status -eq 0 ]] || grep -E ': error ' "$dir/build.log" | sort -u >&2
     return $status
