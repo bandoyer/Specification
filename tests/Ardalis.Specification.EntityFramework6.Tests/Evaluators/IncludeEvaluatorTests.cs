@@ -106,7 +106,7 @@ public class IncludeEvaluatorTests(TestFactory factory) : IntegrationTest(factor
     }
 
 
-    [Fact(Skip = "EF6 include evaluator fails for multiple include chains [Fati Iseni, 15/06/2025]")]
+    [Fact]
     public void QueriesMatch_GivenThenIncludeExpression()
     {
         var spec = new Specification<Store>();
@@ -123,6 +123,86 @@ public class IncludeEvaluatorTests(TestFactory factory) : IntegrationTest(factor
         var expected = DbContext.Stores
             .Include($"{nameof(Store.Products)}.{nameof(Product.Images)}")
             .Include($"{nameof(Store.Company)}.{nameof(Company.Country)}");
+        var expectedSql = GetQueryString(DbContext, expected);
+
+        actualSql.Should().Be(expectedSql);
+    }
+
+    [Fact]
+    public void QueriesMatch_GivenSingleThenIncludeExpression()
+    {
+        var spec = new Specification<Company>();
+        spec.Query
+            .Include(x => x.Stores)
+                .ThenInclude(x => x.Products);
+
+        var actual = _evaluator.GetQuery(DbContext.Companies, spec);
+        var actualSql = GetQueryString(DbContext, actual);
+
+        var expected = DbContext.Companies
+            .Include($"{nameof(Company.Stores)}.{nameof(Store.Products)}");
+        var expectedSql = GetQueryString(DbContext, expected);
+
+        actualSql.Should().Be(expectedSql);
+    }
+
+    [Fact]
+    public void QueriesMatch_GivenNestedThenIncludeExpression()
+    {
+        var spec = new Specification<Company>();
+        spec.Query
+            .Include(x => x.Stores)
+                .ThenInclude(x => x.Products)
+                .ThenInclude(x => x.Images);
+
+        var actual = _evaluator.GetQuery(DbContext.Companies, spec);
+        var actualSql = GetQueryString(DbContext, actual);
+
+        var expected = DbContext.Companies
+            .Include($"{nameof(Company.Stores)}.{nameof(Store.Products)}.{nameof(Product.Images)}");
+        var expectedSql = GetQueryString(DbContext, expected);
+
+        actualSql.Should().Be(expectedSql);
+    }
+
+    [Fact]
+    public void QueriesMatch_GivenThenIncludeExpressionAfterIncludeExpression()
+    {
+        var spec = new Specification<Company>();
+        spec.Query
+            .Include(x => x.Country)
+            .Include(x => x.Stores)
+                .ThenInclude(x => x.Products);
+
+        var actual = _evaluator.GetQuery(DbContext.Companies, spec);
+        var actualSql = GetQueryString(DbContext, actual);
+
+        var expected = DbContext.Companies
+            .Include(nameof(Company.Country))
+            .Include($"{nameof(Company.Stores)}.{nameof(Store.Products)}");
+        var expectedSql = GetQueryString(DbContext, expected);
+
+        actualSql.Should().Be(expectedSql);
+    }
+
+    // The second chain starts from a navigation the first chain already includes, so no path EF6 holds ends where it
+    // starts.
+    [Fact]
+    public void QueriesMatch_GivenThenIncludeExpressionsFromSameNavigation()
+    {
+        var spec = new Specification<Company>();
+        spec.Query
+            .Include(x => x.Stores)
+                .ThenInclude(x => x.Products)
+            .Include(x => x.Stores)
+                .ThenInclude(x => x.Address);
+
+        var actual = _evaluator.GetQuery(DbContext.Companies, spec);
+        var actualSql = GetQueryString(DbContext, actual);
+
+        var expected = DbContext.Companies
+            .Include($"{nameof(Company.Stores)}.{nameof(Store.Products)}")
+            .Include($"{nameof(Company.Stores)}.{nameof(Store.Address)}");
         var expectedSql = GetQueryString(DbContext, expected);
 
         actualSql.Should().Be(expectedSql);
