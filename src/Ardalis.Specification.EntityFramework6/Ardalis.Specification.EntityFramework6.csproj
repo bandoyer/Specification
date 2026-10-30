@@ -22,7 +22,6 @@
 
   <ItemGroup>
     <PackageReference Include="EntityFramework"/>
-    <PackageReference Include="Microsoft.CSharp"/>
     <PackageReference Include="System.Data.DataSetExtensions"/>
   </ItemGroup>
   
