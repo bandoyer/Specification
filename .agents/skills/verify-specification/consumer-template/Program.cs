@@ -3,6 +3,7 @@
 // The output holds no ids or paths, so two trees' outputs compare with diff.
 using System.Data.Entity;
 using System.Data.SqlClient;
+using System.Text.RegularExpressions;
 using Ardalis.Specification;
 using Ardalis.Specification.EntityFramework6;
 
@@ -91,6 +92,30 @@ static class Shop
         await Print<Company>("include-reference", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include(c => c.Country)))).Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"})")));
         await Print<Company>("include-then-include", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include(c => c.Stores).ThenInclude(s => s.Products))))
             .Select(c => $"{c.Name} [{string.Join("; ", c.Stores.OrderBy(s => s.Name, StringComparer.Ordinal).Select(s => $"{s.Name}: {Sorted(s.Products.Select(p => p.Name))}"))}]")));
+        await Print<Company>("include-string", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include("Country")))).Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"})")));
+        await Print<Company>("include-strings", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include("Country").Include("Stores.Products"))))
+            .Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"}) [{string.Join("; ", c.Stores.OrderBy(s => s.Name, StringComparer.Ordinal).Select(s => $"{s.Name}: {Sorted(s.Products.Select(p => p.Name))}"))}]")));
+        await Print<Company>("include-string-and-expression", async (repo, _) => CountriesAndStores(await repo.ListAsync(CountryAndStores())));
+        await Print<Company>("sql-include-string", (_, db) => Task.FromResult(Sql(db.Companies.WithSpecification(Spec<Company>(q => q.Include("Country"))))));
+        await Print<Company>("sql-include-strings", (_, db) => Task.FromResult(Sql(db.Companies.WithSpecification(Spec<Company>(q => q.Include("Country").Include("Stores.Products"))))));
+        await Print<Company>("sql-include-string-and-expression", (_, db) => Task.FromResult(Sql(db.Companies.WithSpecification(CountryAndStores()))));
+        await Print<Company>("include-string-invalid", async (repo, _) =>
+        {
+            try
+            {
+                return $"{(await repo.ListAsync(Spec<Company>(q => q.Include("Nope")))).Count} rows, no exception";
+            }
+            catch (Exception e)
+            {
+                return $"{e.GetType().Name}: {e.Message}";
+            }
+        });
+        // A custom evaluator list with one include evaluator, as a caller of SpecificationEvaluator's public constructor builds it.
+        await Print<Company>("include-evaluator-alone", async (_, db) =>
+            CountriesAndStores(await new EvaluatorRepository<Company>(db, new SpecificationEvaluator([IncludeEvaluator.Instance])).ListAsync(CountryAndStores())));
+        await Print<Company>("include-string-evaluator-alone", async (_, db) => FindIncludeStringEvaluator() is { } evaluator
+            ? CountriesAndStores(await new EvaluatorRepository<Company>(db, new SpecificationEvaluator([evaluator])).ListAsync(CountryAndStores()))
+            : "no IncludeStringEvaluator");
         await Print<Product>("order-then-by-descending-paged", async (repo, _) => string.Join(", ", (await repo.ListAsync(Spec<Product>(q => q.OrderBy(p => p.Category).ThenByDescending(p => p.Price).Skip(1).Take(4)))).Select(p => p.Name)));
         await Print<Product>("order-descending-then-by", async (repo, _) => string.Join(", ", (await repo.ListAsync(Spec<Product>(q => q.OrderByDescending(p => p.Category).ThenBy(p => p.Name)))).Select(p => p.Name)));
         await Print<Product>("count-ignores-paging", async (repo, _) => (await repo.CountAsync(Spec<Product>(q => q.OrderBy(p => p.Name).Skip(1).Take(2)))).ToString());
@@ -151,12 +176,27 @@ static class Shop
         return spec;
     }
 
+    static Specification<Company> CountryAndStores() => Spec<Company>(q => q.Include("Country").Include(c => c.Stores));
+
+    static string CountriesAndStores(IEnumerable<Company> companies) =>
+        Sorted(companies.Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"}) [{Sorted(c.Stores.Select(s => s.Name))}]"));
+
+    // The SQL EF6 builds, on one line.
+    static string Sql<T>(IQueryable<T> query) => Regex.Replace(query.ToString() ?? "", @"\s+", " ").Trim();
+
+    // By name, so the consumer still builds against a tree from before IncludeStringEvaluator existed (#6).
+    static IEvaluator? FindIncludeStringEvaluator() =>
+        typeof(IncludeEvaluator).Assembly.GetType("Ardalis.Specification.EntityFramework6.IncludeStringEvaluator")
+            ?.GetProperty("Instance")?.GetValue(null) as IEvaluator;
+
     static string Sorted(IEnumerable<string> names) => string.Join(", ", names.OrderBy(n => n, StringComparer.Ordinal));
 
     static string Show(string? value) => value ?? "<null>";
 }
 
 public class Repository<T>(DbContext dbContext) : RepositoryBase<T>(dbContext) where T : class;
+
+public class EvaluatorRepository<T>(DbContext dbContext, ISpecificationEvaluator evaluator) : RepositoryBase<T>(dbContext, evaluator) where T : class;
 
 public class ShopContext(string connectionString) : DbContext(connectionString)
 {
