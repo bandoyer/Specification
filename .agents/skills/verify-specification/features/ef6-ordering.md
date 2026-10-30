@@ -37,6 +37,6 @@ Preconditions:
 
 ## Gotchas
 
-- On main at `25b1a1e`, `Evaluate` throws `RuntimeBinderException` for every spec with an order, so `order-in-memory` shows that name.
+- On main at `25b1a1e`, `Evaluate` throws `RuntimeBinderException` for every spec with an order, so `order-in-memory` shows that name. From `4122aa6`, the change for #7, the line reads `order-in-memory: Rope, Bucket, Anvil, Stapler, Lamp, Desk`.
 - Each key in these orders is unique within its group, each price and each city within a company, so every order has one right answer and two runs compare line for line.
 - [EF6 repository queries](./ef6-repository-queries.md) counts 33 lines, which predates these five. With them, `verify run` prints 38.
