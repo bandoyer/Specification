@@ -2,6 +2,27 @@
 
 public class SpecificationEvaluatorTests
 {
+    private static readonly SpecificationEvaluator _evaluator = SpecificationEvaluator.Default;
+
+    // GetQuery checks the specification before it reads the query, so these tests need no database.
+    private static readonly IQueryable<Country> _countries = new List<Country>().AsQueryable();
+
+    [Fact]
+    public void ThrowsArgumentNullException_GivenNullSpec()
+    {
+        var sut = () => _evaluator.GetQuery(_countries, (Specification<Country>)null!);
+
+        sut.Should().Throw<ArgumentNullException>().WithParameterName("specification");
+    }
+
+    [Fact]
+    public void ThrowsArgumentNullException_GivenNullSpecificationWithSelector()
+    {
+        var sut = () => _evaluator.GetQuery(_countries, (Specification<Country, string>)null!);
+
+        sut.Should().Throw<ArgumentNullException>().WithParameterName("specification");
+    }
+
     [Fact]
     public void Constructor_SetsDefaultEvaluators()
     {
