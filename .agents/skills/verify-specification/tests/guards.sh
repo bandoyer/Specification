@@ -68,6 +68,10 @@ refuses "consumer from a decoy tree" consumer @DECOY@ decoy
 refuses "consumer from a folder inside a tree" consumer "$TREE/src" inside
 refuses "consumer with a name that climbs out" consumer "$TREE" "../../$(basename "$ESCAPE")"
 [[ ! -e $ESCAPE ]] || fail "consumer wrote $ESCAPE"
+refuses "efcore-consumer from a decoy tree" efcore-consumer @DECOY@ decoy
+refuses "efcore-consumer from a folder inside a tree" efcore-consumer "$TREE/src" inside
+refuses "efcore-consumer with a name that climbs out" efcore-consumer "$TREE" "../../$(basename "$ESCAPE")"
+[[ ! -e $ESCAPE ]] || fail "efcore-consumer wrote $ESCAPE"
 refuses "build of a decoy consumer" build @DECOY@
 refuses "build through a link out of the scratch root" build @LINK@
 refuses "build of a folder inside a scratch item" build "$TREE/src"
@@ -85,6 +89,14 @@ if [[ -n $CONSUMER ]] && "$V" cleanup "$CONSUMER" >/dev/null && [[ ! -e $CONSUME
 else
     fail "cleanup didn't remove the consumer '$CONSUMER'"
 fi
+EFCORE=$("$V" efcore-consumer "$TREE" guards-efcore)
+if [[ -n $EFCORE && -f $EFCORE/Consumer.csproj ]] && ! grep -q '@[A-Z]*@' "$EFCORE/Consumer.csproj" \
+    && grep -q 'Include="Microsoft.EntityFrameworkCore.SqlServer" Version="[0-9]' "$EFCORE/Consumer.csproj"; then
+    pass "efcore-consumer makes $EFCORE, with the tree's SQL Server provider version"
+else
+    fail "efcore-consumer made no project from $TREE, or left a placeholder in '$EFCORE/Consumer.csproj'"
+fi
+[[ -z $EFCORE ]] || "$V" cleanup "$EFCORE" >/dev/null
 
 new_decoy
 ln -s "${DECOYS[-1]}" "$SCRATCH/consumers/link"

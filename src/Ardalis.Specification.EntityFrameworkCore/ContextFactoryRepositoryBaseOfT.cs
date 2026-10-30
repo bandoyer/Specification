@@ -1,4 +1,6 @@
-﻿namespace Ardalis.Specification.EntityFrameworkCore;
+﻿using System.Runtime.CompilerServices;
+
+namespace Ardalis.Specification.EntityFrameworkCore;
 
 public abstract class ContextFactoryRepositoryBaseOfT<TEntity, TContext> : IRepositoryBase<TEntity>
   where TEntity : class
@@ -115,8 +117,21 @@ public abstract class ContextFactoryRepositoryBaseOfT<TEntity, TContext> : IRepo
     /// <inheritdoc/>
     public IAsyncEnumerable<TEntity> AsAsyncEnumerable(ISpecification<TEntity> specification)
     {
-        using var dbContext = _dbContextFactory.CreateDbContext();
-        return ApplySpecification(specification, dbContext).AsAsyncEnumerable();
+        // Here, since the iterator below runs nothing until the caller enumerates.
+        ArgumentNullException.ThrowIfNull(specification);
+        return AsAsyncEnumerableCore(specification, default);
+    }
+
+    // An async iterator, so each enumeration creates its own context and disposes it when the enumeration ends, the
+    // caller stops early, or the token from WithCancellation is cancelled.
+    private async IAsyncEnumerable<TEntity> AsAsyncEnumerableCore(ISpecification<TEntity> specification,
+      [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await using var dbContext = _dbContextFactory.CreateDbContext();
+        await foreach (var entity in ApplySpecification(specification, dbContext).AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            yield return entity;
+        }
     }
 
     /// <inheritdoc/>
