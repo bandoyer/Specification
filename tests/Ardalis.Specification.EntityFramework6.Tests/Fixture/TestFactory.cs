@@ -9,6 +9,9 @@ public class TestFactory : IAsyncLifetime
     // Flag to force using Docker SQL Server. Update it manually if you want to avoid localDb locally.
     private const bool FORCE_DOCKER = false;
 
+    // Set it to a SQL Server connection string to run the tests against that server instead of LocalDB or Docker.
+    private const string SQL_SERVER_VARIABLE = "SPECIFICATION_TEST_SQL_SERVER";
+
     private string _connectionString = default!;
     private MsSqlContainer? _dbContainer = null;
 
@@ -33,7 +36,15 @@ public class TestFactory : IAsyncLifetime
 
         using (var localDB = new SqlLocalDbApi())
         {
-            if (FORCE_DOCKER || !localDB.IsLocalDBInstalled())
+            if (Environment.GetEnvironmentVariable(SQL_SERVER_VARIABLE) is { Length: > 0 } sqlServer)
+            {
+                var builder = new System.Data.SqlClient.SqlConnectionStringBuilder(sqlServer)
+                {
+                    InitialCatalog = dbName
+                };
+                _connectionString = builder.ToString();
+            }
+            else if (FORCE_DOCKER || !localDB.IsLocalDBInstalled())
             {
                 _dbContainer = CreateContainer();
                 await _dbContainer.StartAsync();

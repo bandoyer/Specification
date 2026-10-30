@@ -25,6 +25,20 @@ Mostly. But pretty much exclusively for non-maintainers. You'll need to fork the
 - [Pull Request Check List](https://ardalis.com/github-pull-request-checklist/)
 - [Resync your fork with this upstream repo](https://ardalis.com/syncing-a-fork-of-a-github-repository-with-upstream/)
 
+## Running the tests
+
+The EF6 and EF Core tests need SQL Server. On Windows they use LocalDB. Elsewhere they start a SQL Server container through Docker.
+
+To use a SQL Server you already run, set `SPECIFICATION_TEST_SQL_SERVER` to its connection string. The tests create their own databases on it. For example, with a container on this machine:
+
+```bash
+docker run -d --name spec-sql -e ACCEPT_EULA=Y -e 'MSSQL_SA_PASSWORD=P@ssW0rd!' -p 127.0.0.1:1433:1433 mcr.microsoft.com/mssql/server:2022-latest
+export SPECIFICATION_TEST_SQL_SERVER='Server=localhost,1433;User Id=sa;Password=P@ssW0rd!;TrustServerCertificate=True'
+dotnet test ci.slnf --framework net9.0
+```
+
+Only one test run at a time should use the server, because each run resets the same databases.
+
 ## Ask before adding a pull request
 
 You can just add a pull request out of the blue if you want, but it's much better etitquette (and more likely to be accepted) if you open a new issue or comment in an existing issue stating you'd like to make a pull request.
