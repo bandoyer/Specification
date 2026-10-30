@@ -83,6 +83,17 @@ public class ContextFactoryRepository_AsAsyncEnumerableTests(TestFactory factory
         _contextFactory.Made.Where(context => !context.IsDisposed).Should().BeEmpty();
     }
 
+    [Fact]
+    public void AsAsyncEnumerable_ThrowsArgumentNullExceptionWhenCalled_GivenNullSpec()
+    {
+        var repo = new ContextFactoryRepository(_contextFactory);
+
+        var sut = () => repo.AsAsyncEnumerable(null!);
+
+        sut.Should().Throw<ArgumentNullException>().WithParameterName("specification");
+        _contextFactory.Made.Where(context => !context.IsDisposed).Should().BeEmpty();
+    }
+
     private Task SeedCountriesAsync() => SeedRangeAsync<Country>(
     [
         new() { Name = "a" },
