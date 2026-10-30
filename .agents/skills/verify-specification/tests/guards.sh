@@ -75,6 +75,8 @@ refuses "run of a decoy consumer" run @DECOY@
 refuses "warnings of a decoy project" warnings @DECOY@/Consumer.csproj
 refuses "warnings of a project that climbs out with .." warnings "$TREE/../../../@DECOYNAME@/Consumer.csproj"
 refuses "benchmark of a decoy tree" benchmark @DECOY@ "$SCRATCH" IncludeStep
+refuses "compare with a decoy base tree" benchmark compare @DECOY@ "$TREE" "$SCRATCH" IncludeStep
+refuses "compare with a decoy branch tree" benchmark compare "$TREE" @DECOY@ "$SCRATCH" IncludeStep
 
 CONSUMER=$("$V" consumer "$TREE" guards)
 if [[ -n $CONSUMER && -f $CONSUMER/Consumer.csproj ]]; then pass "consumer makes $CONSUMER"; else fail "consumer made no project from $TREE"; fi
