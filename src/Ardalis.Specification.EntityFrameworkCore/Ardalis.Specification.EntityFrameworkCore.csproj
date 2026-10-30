@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Specification\src\Ardalis.Specification\Ardalis.Specification.csproj" />
+    <ProjectReference Include="..\Ardalis.Specification\Ardalis.Specification.csproj" />
   </ItemGroup>
   
 </Project>
