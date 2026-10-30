@@ -68,10 +68,31 @@ The same plugin packages add methods to `DbSet<>` that apply a specification and
 ```csharp
 var spec = new CustomerSpec(20);
 
-var customers = await dbContext.Customers.ToListAsync(spec);
-var first = await dbContext.Customers.FirstOrDefaultAsync(spec);
-var count = await dbContext.Customers.CountAsync(spec);
-var any = await dbContext.Customers.AnyAsync(spec);
+List<Customer> customers = await dbContext.Customers.ToListAsync(spec);
+IEnumerable<Customer> sequence = await dbContext.Customers.ToEnumerableAsync(spec);
+Customer? first = await dbContext.Customers.FirstOrDefaultAsync(spec);
+int count = await dbContext.Customers.CountAsync(spec);
+bool any = await dbContext.Customers.AnyAsync(spec);
+
+// EF Core only.
+await foreach (var customer in dbContext.Customers.AsAsyncEnumerable(spec))
+{
+    Console.WriteLine(customer.Name);
+}
+```
+
+`SingleOrDefaultAsync` takes a specification meant to return a single result.
+
+```csharp
+public class CustomerByIdSpec : SingleResultSpecification<Customer>
+{
+    public CustomerByIdSpec(int id)
+    {
+        Query.Where(x => x.Id == id);
+    }
+}
+
+Customer? customer = await dbContext.Customers.SingleOrDefaultAsync(new CustomerByIdSpec(1));
 ```
 
 | Method | Returns |
@@ -98,5 +119,19 @@ public class CustomerNameSpec : Specification<Customer, string>
     }
 }
 
-List<string> names = await dbContext.Customers.ToListAsync(new CustomerNameSpec(20));
+public class CustomerNameByIdSpec : SingleResultSpecification<Customer, string>
+{
+    public CustomerNameByIdSpec(int id)
+    {
+        Query.Where(x => x.Id == id);
+        Query.Select(x => x.Name);
+    }
+}
+
+var namesSpec = new CustomerNameSpec(20);
+
+List<string> names = await dbContext.Customers.ToListAsync(namesSpec);
+IEnumerable<string> nameSequence = await dbContext.Customers.ToEnumerableAsync(namesSpec);
+string? firstName = await dbContext.Customers.FirstOrDefaultAsync(namesSpec);
+string? name = await dbContext.Customers.SingleOrDefaultAsync(new CustomerNameByIdSpec(1));
 ```
