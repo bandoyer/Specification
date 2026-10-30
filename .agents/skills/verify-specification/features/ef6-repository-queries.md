@@ -71,7 +71,7 @@ Preconditions:
 
 ## Gotchas
 
-- The provider fails on a second include chain, as in `Include(...).ThenInclude(...).Include(...).ThenInclude(...)`. That is issue #3, and the skipped test `QueriesMatch_GivenThenIncludeExpression`. So `include-then-include` uses one chain, and the run that fixes #3 adds the second.
+- `include-then-include` has one chain. [EF6 include chains](./ef6-include-chains.md) drives a second.
 - Each query opens a fresh context, so a navigation holds only what that query's own `Include` loaded. One shared context would fill navigations from earlier queries and hide a missing include.
 - A run waits while the test suite holds the shared lock. A long pause before the first line is the lock.
 - `Globex Bergen` has no products, so `include-then-include` prints `Globex Bergen: ` with nothing after the colon.
