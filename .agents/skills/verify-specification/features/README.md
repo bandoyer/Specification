@@ -27,6 +27,7 @@ Each feature file starts with an H1 title and a paragraph on what a developer us
 ## Features
 
 - [EF6 nullable annotations](./ef6-nullable-annotations.md): the warnings a nullable-enabled caller gets from the EF6 provider's public members, and the warnings the provider and its test project build with.
+- [EF6 ordering](./ef6-ordering.md): ordering a query through the EF6 provider, a spec with two order chains, and the `OrderEvaluator`'s in-memory `Evaluate`.
 - [EF6 repository queries](./ef6-repository-queries.md): querying SQL Server through the EF6 provider's `RepositoryBase<T>` and `DbSet` extensions.
 - [EF6 include strings](./ef6-include-strings.md): navigations loaded by include strings, the SQL EF6 builds for them, and a custom evaluator list holding one include evaluator.
 
