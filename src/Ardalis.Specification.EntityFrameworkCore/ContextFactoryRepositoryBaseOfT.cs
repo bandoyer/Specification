@@ -46,7 +46,7 @@ public abstract class ContextFactoryRepositoryBaseOfT<TEntity, TContext> : IRepo
     public async Task<TEntity?> SingleOrDefaultAsync(ISingleResultSpecification<TEntity> specification, CancellationToken cancellationToken = default)
     {
         await using var dbContext = _dbContextFactory.CreateDbContext();
-        return await ApplySpecification(specification, dbContext).FirstOrDefaultAsync(cancellationToken);
+        return await ApplySpecification(specification, dbContext).SingleOrDefaultAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -54,7 +54,7 @@ public abstract class ContextFactoryRepositoryBaseOfT<TEntity, TContext> : IRepo
       CancellationToken cancellationToken = default)
     {
         await using var dbContext = _dbContextFactory.CreateDbContext();
-        return await ApplySpecification(specification, dbContext).FirstOrDefaultAsync(cancellationToken);
+        return await ApplySpecification(specification, dbContext).SingleOrDefaultAsync(cancellationToken);
     }
 
     /// <inheritdoc/>

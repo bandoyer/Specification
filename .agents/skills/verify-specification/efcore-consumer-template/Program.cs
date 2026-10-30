@@ -1,8 +1,9 @@
 // The EF Core provider's consumer. It seeds a database of its own on SQL Server, then enumerates AsAsyncEnumerable
 // through RepositoryBase<T> and through ContextFactoryRepositoryBaseOfT, whose factory counts the contexts it makes and
-// how many of them are disposed. Then it queries a shop through the DbSet extensions (Shop.cs). It prints one
-// "label: result" line per query, and drops the database. `verify run` runs it. The output holds no ids or paths, so
-// two trees' outputs compare with diff.
+// how many of them are disposed. It also reads single results through ContextFactoryRepositoryBaseOfT. Then it queries a
+// shop through the DbSet extensions (Shop.cs). It prints one "label: result" line per query, and drops the database.
+// `verify run` runs it. The output holds no ids or paths, so two trees' outputs compare with diff.
+using System.Linq.Expressions;
 using Ardalis.Specification;
 using Ardalis.Specification.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
@@ -59,6 +60,18 @@ static class Atlas
         await PrintFactory(options, "factory-async-enumerable-cancel", sequence => Read(sequence, cancelAfterFirst: true));
         await PrintFactory(options, "factory-async-enumerable-twice", async sequence => $"{await Read(sequence)} | {await Read(sequence)}");
         await PrintFactory(options, "factory-async-enumerable-unenumerated", _ => Task.FromResult("not enumerated"));
+
+        // Two of the five names end with "ia": Albania and Austria.
+        var cancelled = new CancellationToken(canceled: true);
+        await PrintFactoryQuery(options, "factory-single", async repository => (await repository.SingleOrDefaultAsync(new OnlyCountry(c => c.Name == "Norway")))?.Name);
+        await PrintFactoryQuery(options, "factory-single-missing", async repository => (await repository.SingleOrDefaultAsync(new OnlyCountry(c => c.Name == "Peru")))?.Name);
+        await PrintFactoryQuery(options, "factory-single-two-matches", async repository => (await repository.SingleOrDefaultAsync(new OnlyCountry(c => c.Name.EndsWith("ia"))))?.Name);
+        await PrintFactoryQuery(options, "factory-single-cancel", async repository => (await repository.SingleOrDefaultAsync(new OnlyCountry(c => c.Name == "Norway"), cancelled))?.Name);
+        await PrintFactoryQuery(options, "factory-single-projected", repository => repository.SingleOrDefaultAsync(new OnlyCountryName(c => c.Name == "Norway")));
+        await PrintFactoryQuery(options, "factory-single-projected-missing", repository => repository.SingleOrDefaultAsync(new OnlyCountryName(c => c.Name == "Peru")));
+        await PrintFactoryQuery(options, "factory-single-projected-two-matches", repository => repository.SingleOrDefaultAsync(new OnlyCountryName(c => c.Name.EndsWith("ia"))));
+        await PrintFactoryQuery(options, "factory-single-projected-cancel", repository => repository.SingleOrDefaultAsync(new OnlyCountryName(c => c.Name == "Norway"), cancelled));
+        await PrintFactoryQuery(options, "factory-first-two-matches", async repository => (await repository.FirstOrDefaultAsync(new NamesEndingWithIa()))?.Name);
     }
 
     // Each label gets a factory of its own, so its count holds only the contexts that label's query made.
@@ -66,6 +79,22 @@ static class Atlas
     {
         var factory = new CountingFactory(options);
         var result = await read(new FactoryCountryRepository(factory).AsAsyncEnumerable(new NamesStartingWithA()));
+        Print(label, $"{result}; {factory.Tally}");
+    }
+
+    // The same for a query that returns one result: the name it read, <null>, or the type of the exception it threw.
+    private static async Task PrintFactoryQuery(DbContextOptions<AtlasContext> options, string label, Func<FactoryCountryRepository, Task<string?>> query)
+    {
+        var factory = new CountingFactory(options);
+        string result;
+        try
+        {
+            result = await query(new FactoryCountryRepository(factory)) ?? "<null>";
+        }
+        catch (Exception e)
+        {
+            result = e.GetType().Name;
+        }
         Print(label, $"{result}; {factory.Tally}");
     }
 
@@ -107,6 +136,25 @@ public sealed class Country
 public sealed class NamesStartingWithA : Specification<Country>
 {
     public NamesStartingWithA() => Query.Where(country => country.Name.StartsWith("A")).OrderBy(country => country.Name);
+}
+
+public sealed class NamesEndingWithIa : Specification<Country>
+{
+    public NamesEndingWithIa() => Query.Where(country => country.Name.EndsWith("ia")).OrderBy(country => country.Name);
+}
+
+public sealed class OnlyCountry : SingleResultSpecification<Country>
+{
+    public OnlyCountry(Expression<Func<Country, bool>> criteria) => Query.Where(criteria);
+}
+
+public sealed class OnlyCountryName : SingleResultSpecification<Country, string>
+{
+    public OnlyCountryName(Expression<Func<Country, bool>> criteria)
+    {
+        Query.Where(criteria);
+        Query.Select(country => country.Name);
+    }
 }
 
 public sealed class AtlasContext(DbContextOptions<AtlasContext> options) : DbContext(options)
