@@ -93,6 +93,21 @@ static class Shop
             .Select(c => $"{c.Name} [{string.Join("; ", c.Stores.OrderBy(s => s.Name, StringComparer.Ordinal).Select(s => $"{s.Name}: {Sorted(s.Products.Select(p => p.Name))}"))}]")));
         await Print<Product>("order-then-by-descending-paged", async (repo, _) => string.Join(", ", (await repo.ListAsync(Spec<Product>(q => q.OrderBy(p => p.Category).ThenByDescending(p => p.Price).Skip(1).Take(4)))).Select(p => p.Name)));
         await Print<Product>("order-descending-then-by", async (repo, _) => string.Join(", ", (await repo.ListAsync(Spec<Product>(q => q.OrderByDescending(p => p.Category).ThenBy(p => p.Name)))).Select(p => p.Name)));
+        await Print<Product>("order-by-value-key", async (repo, _) => string.Join(", ", (await repo.ListAsync(Spec<Product>(q => q.OrderBy(p => p.Price)))).Select(p => p.Name)));
+        await Print<Product>("order-by-descending-value-key", async (repo, _) => string.Join(", ", (await repo.ListAsync(Spec<Product>(q => q.OrderByDescending(p => p.Price)))).Select(p => p.Name)));
+        await Print<Store>("order-by-navigation-then-by-descending", async (repo, _) => string.Join(", ", (await repo.ListAsync(Spec<Store>(q => q.OrderBy(s => s.Company.Name).ThenByDescending(s => s.City)))).Select(s => s.Name)));
+        // An exception prints as its type name alone, so the line compares across commits.
+        await Print<Product>("order-duplicate-chain", async (repo, _) =>
+        {
+            try { return string.Join(", ", (await repo.ListAsync(Spec<Product>(q => { q.OrderBy(p => p.Name); q.OrderBy(p => p.Price); }))).Select(p => p.Name)); }
+            catch (Exception ex) { return ex.GetType().Name; }
+        });
+        await Print<Product>("order-in-memory", async (repo, _) =>
+        {
+            var products = await repo.ListAsync();
+            try { return string.Join(", ", Ardalis.Specification.EntityFramework6.OrderEvaluator.Instance.Evaluate(products, Spec<Product>(q => q.OrderByDescending(p => p.Category).ThenBy(p => p.Price))).Select(p => p.Name)); }
+            catch (Exception ex) { return ex.GetType().Name; }
+        });
         await Print<Product>("count-ignores-paging", async (repo, _) => (await repo.CountAsync(Spec<Product>(q => q.OrderBy(p => p.Name).Skip(1).Take(2)))).ToString());
         await Print<Product>("count-where", async (repo, _) => (await repo.CountAsync(Spec<Product>(q => q.Where(p => p.Price > 6)))).ToString());
         await Print<Product>("count-all", async (repo, _) => (await repo.CountAsync()).ToString());
