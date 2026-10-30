@@ -33,6 +33,7 @@
   <PropertyGroup>
     <!--Missing XML comment-->
     <NoWarn>1591</NoWarn>
+    <WarningsAsErrors>$(WarningsAsErrors);nullable</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
