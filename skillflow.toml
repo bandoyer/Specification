@@ -1,0 +1,40 @@
+[pr]
+# GitHub Actions has never run on this fork, so bin/pr-suite runs the suite from a fresh clone of the PR merged with main.
+checks = "local"
+# The same build and tests as upstream's ci.yml. The SQL Server is the spec-sql container from CONTRIBUTING.md's "Running
+# the tests". Runs share it and each test run resets the same databases, so the tests wait for AGENTS.md's lock.
+suite = '''
+set -eu
+export SPECIFICATION_TEST_SQL_SERVER='Server=localhost,1433;User Id=sa;Password=P@ssW0rd!;TrustServerCertificate=True'
+echo "=== dotnet build ci.slnf --configuration Release"; dotnet build ci.slnf --configuration Release
+echo "=== dotnet test ci.slnf --framework net9.0"
+flock "$HOME/.cache/specification-spec-sql.lock" dotnet test ci.slnf --configuration Release --no-build --framework net9.0
+'''
+
+# The chief's policy: what /skillflow chief answers from, merges, and leaves to Dan. skillflow's references/chief.md
+# reads it. Drafted on 2026-10-30 for the EF6 provider issues #3, #4, #6, #7 and #10.
+[chief]
+sources = [
+  "Issues #3, #4, #6, #7 and #10, copied from ardalis/Specification #521, #522, #533, #534 and #537",
+  "Epic #9, which plans all five for version 10.0.0",
+  "src/Ardalis.Specification.EntityFrameworkCore, the reference implementation (Dan, 2026-10-30)",
+  "The tests Fati Iseni skipped for #3 and #4, in tests/Ardalis.Specification.EntityFramework6.Tests/Evaluators/",
+  "CONTRIBUTING.md and AGENTS.md",
+]
+merge = "Verify passed at a commit skillflow check still holds to the PR head, no Act on finding is open in review.md, the suite passed from a fresh clone of the head merged with the default branch as it is now (artifacts/pr-suite.txt), GitHub says the PR can merge, and the diff matches the sources."
+never-delegate = [
+  "Posting anything outside bandoyer/Specification, such as an issue, comment or pull request on ardalis/Specification.",
+  "Publishing a release or a NuGet package, or changing a package's version.",
+  "A public API change that the standing answer public-api doesn't cover.",
+]
+stop = [
+  "The spec-sql container isn't running: `docker ps --filter name=spec-sql --filter status=running -q` prints nothing.",
+]
+
+[chief.standing]
+ci = "Declined: GitHub Actions has never run on this fork. [pr] sets checks = \"local\", and bin/pr-suite runs the suite."
+reference = "Port the EF Core provider's evaluator to EF6: its shape, its names, its OneOrMany fast paths and its cached delegates. Depart only where EF6's API differs, such as string Include paths in place of ThenInclude, and list each departure in the PR body."
+public-api = "Epic #9 plans all five issues for version 10.0.0, so a breaking change that gives the EF6 provider the EF Core provider's public shape is expected. One example is IncludeEvaluator no longer applying include strings once IncludeStringEvaluator does. The PR body lists each public type or member the PR removes or changes. Any other public change goes to Dan."
+skipped-tests = "Enable each test the issue's author skipped, as written. When EF6 can't produce the SQL the test expects, change the expectation only as far as EF6 forces, and say why in the PR body."
+net472 = "Declined as a gate: the suite builds every target framework, net472 included, and runs the tests on net9.0, as upstream's ci.yml does."
+performance = "Dan's rule for performance work holds for #7 and for the 'optimize the evaluator' in #3, #4 and #6: run the same BenchmarkDotNet workload, with MemoryDiagnoser, on the evaluator's GetQuery before and after the change, keep the benchmark in the run folder, and put both results in the PR body. tests/Ardalis.Specification.Benchmarks stays EF Core only."
