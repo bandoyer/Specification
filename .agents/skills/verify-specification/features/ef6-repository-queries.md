@@ -29,7 +29,7 @@ Preconditions:
 - `verify doctor` passes.
 - `C` is a consumer from `verify consumer`.
 
-- **Run.** Run `verify run "$C"`. It exits 0 and prints 33 lines, one per label, in this order. Against main at `9f2a9c9` they read:
+- **Run.** Run `verify run "$C"`. It exits 0 and prints one line per label. This feature's labels come in this order, with other features' lines among them. Against main at `f390273` they read:
 
   ```
   list-all: Acme Durres, Acme Tirana, Globex Bergen, Globex Oslo, Initech Remote
@@ -67,7 +67,7 @@ Preconditions:
   with-specification-projected: Acme, Globex, Initech
   ```
 
-- **Compare two commits.** Make a consumer for each tree, save each run's output to its own file, and `diff` the files. Equal files of 33 lines, each line with its rows, show that the two commits query alike.
+- **Compare two commits.** Make a consumer for each tree, save each run's output to its own file, and `diff` the files. Equal files, each line with its rows, show that the two commits query alike.
 
 ## Gotchas
 

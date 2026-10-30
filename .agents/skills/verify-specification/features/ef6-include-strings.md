@@ -24,7 +24,7 @@ Preconditions:
 - `verify doctor` passes.
 - `C` is a consumer from `verify consumer`.
 
-- **Run.** Run `verify run "$C"`. It prints these nine labels right after `include-then-include`. Against main at `25b1a1e` they read as below, with each `sql-` line's SELECT cut short here:
+- **Run.** Run `verify run "$C"`. It prints these nine labels one after another. Against main at `f390273` they read as below, with each `sql-` line's SELECT cut short here:
 
   ```
   include-string: Acme (Albania), Globex (Norway), Initech (Norway)
@@ -34,8 +34,8 @@ Preconditions:
   sql-include-strings: SELECT [Project1].[Id] AS [Id], ...
   sql-include-string-and-expression: SELECT [Project1].[Id] AS [Id], ...
   include-string-invalid: InvalidOperationException: A specified Include path is not valid. The EntityType 'CodeFirstNamespace.Company' does not declare a navigation property with the name 'Nope'.
-  include-evaluator-alone: Acme (Albania) [Acme Durres, Acme Tirana], Globex (Norway) [Globex Bergen, Globex Oslo], Initech (Norway) [Initech Remote]
-  include-string-evaluator-alone: no IncludeStringEvaluator
+  include-evaluator-alone: Acme (not loaded) [Acme Durres, Acme Tirana], Globex (not loaded) [Globex Bergen, Globex Oslo], Initech (not loaded) [Initech Remote]
+  include-string-evaluator-alone: Acme (Albania) [], Globex (Norway) [], Initech (Norway) []
   ```
 
 - **Compare two commits.** Diff two commits' runs as [ef6-repository-queries.md](./ef6-repository-queries.md) says. Equal `sql-` lines show that the two commits send the same SQL.

@@ -4,7 +4,7 @@ A developer whose project has nullable reference types enabled gets compiler war
 
 ## Sub-features
 
-- `nullable-results`: dereferencing the awaited result of `GetByIdAsync`, `FirstOrDefaultAsync` or `SingleOrDefaultAsync`, each with and without a projection, warns CS8602.
+- `nullable-results`: dereferencing the awaited result of `GetByIdAsync`, or of `FirstOrDefaultAsync` or `SingleOrDefaultAsync` with and without a projection, warns CS8602.
 - `nullable-optional-evaluator`: `WithSpecification(spec, evaluator: null)`, in both overloads, gives no warning.
 - `nullable-null-specification`: `null` as the specification to `ListAsync` or to either `WithSpecification` warns CS8625.
 - `nullable-id-type`: `GetByIdAsync<string?>` warns CS8714.
@@ -31,5 +31,5 @@ Preconditions:
 ## Gotchas
 
 - The consumer targets net9.0 only, so its probes see the provider's net9.0 build. The provider's warnings for each framework come from `verify warnings`.
-- `verify build` also lists the provider's own warnings, since it builds the provider the consumer references. A warning under `trees/` is the provider's, and one under `consumers/` is the consumer's.
+- `verify build` also lists the provider's own warnings, since it builds the provider the consumer references. A warning under `trees/` is the library's, from the provider or the core library it references, and one under `consumers/` is the consumer's.
 - A probe's line number moves when `Probes.cs` changes. `verify build` reads the numbers from the file each time.

@@ -23,20 +23,19 @@ Preconditions:
 - `verify doctor` passes.
 - `C` is a consumer from `verify consumer`.
 
-- **Run.** Run `verify run "$C"`. Against main at `25b1a1e`, the five lines read:
+- **Run.** Run `verify run "$C"`. Against main at `f390273`, the five lines read:
 
   ```
   order-by-value-key: Rope, Bucket, Stapler, Anvil, Lamp, Desk
   order-by-descending-value-key: Desk, Lamp, Anvil, Stapler, Bucket, Rope
   order-by-navigation-then-by-descending: Acme Tirana, Acme Durres, Globex Oslo, Globex Bergen, Initech Remote
   order-duplicate-chain: DuplicateOrderChainException
-  order-in-memory: RuntimeBinderException
+  order-in-memory: Rope, Bucket, Anvil, Stapler, Lamp, Desk
   ```
 
 - **Compare two commits.** Make a consumer for each tree and `diff` their outputs, as [EF6 repository queries](./ef6-repository-queries.md) says.
 
 ## Gotchas
 
-- On main at `25b1a1e`, `Evaluate` throws `RuntimeBinderException` for every spec with an order, so `order-in-memory` shows that name. From `4122aa6`, the change for #7, the line reads `order-in-memory: Rope, Bucket, Anvil, Stapler, Lamp, Desk`.
+- Before `4122aa6`, the change for #7, `Evaluate` throws `RuntimeBinderException` for every spec with an order, so `order-in-memory` shows that name.
 - Each key in these orders is unique within its group, each price and each city within a company, so every order has one right answer and two runs compare line for line.
-- [EF6 repository queries](./ef6-repository-queries.md) counts 33 lines, which predates these five. With them, `verify run` prints 38.
