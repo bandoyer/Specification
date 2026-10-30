@@ -82,9 +82,9 @@ ensure_scratch() {
     done < <(find "$SCRATCH/trees" "$SCRATCH/consumers" -mindepth 2 -maxdepth 2 -name "$MARKER" -mtime +0 -print0)
 }
 
-# Prints each distinct warning in the build log $1 once, with the frameworks it appeared in, then the count. It reads
-# every MSBuild warning form: "<file>(<line>,<col>): warning <code>: <message> [<project>]", and the same without the
-# position or the project, as NuGet and MSBuild targets write them.
+# Prints each distinct warning in the build log $1 once, with the frameworks it appeared in, then the count. Every line
+# holding ": warning " counts, in the form "<file>(<line>,<col>): warning <code>: <message> [<project>]" with or without
+# the position, the code or the project, as compilers, NuGet and MSBuild targets write them.
 report_warnings() {
     awk -v prefix="$(realpath -m -- "$SCRATCH")/" '
         {
@@ -92,9 +92,12 @@ report_warnings() {
             if (at == 0) next
             place = substr($0, 1, at - 1)
             rest = substr($0, at + 10)
-            if (!match(rest, /^[A-Za-z]+[0-9]+:/)) next
-            code = substr(rest, 1, RLENGTH - 1)
-            message = substr(rest, RLENGTH + 1)
+            code = "(no code)"
+            message = rest
+            if (match(rest, /^[^ :]*:/)) {
+                if (RLENGTH > 1) code = substr(rest, 1, RLENGTH - 1)
+                message = substr(rest, RLENGTH + 1)
+            }
             sub(/^ +/, "", message)
             tfm = ""
             if (match(message, / \[[^]]*\]$/)) {
