@@ -93,4 +93,15 @@ else
     fail "cleanup of everything: exit $status, tree left: $([[ -e $TREE ]] && echo yes || echo no), output: ${out//$'\n'/ | }"
 fi
 
+# A tree older than a day goes when the next folder is made, so a consumer from it is refused rather than left
+# pointing at nothing.
+TREE=$("$V" tree HEAD)
+touch -d '2 days ago' "$TREE/.verify-made"
+out=$("$V" consumer "$TREE" aged 2>&1) && status=0 || status=$?
+if [[ $status -ne 0 && $out == *refused* && ! -e $TREE && ! -e $SCRATCH/consumers/aged ]]; then
+    pass "consumer from a tree the day-old cleanup removed"
+else
+    fail "consumer from a day-old tree: exit $status, consumer made: $([[ -e $SCRATCH/consumers/aged ]] && echo yes || echo no), output: ${out//$'\n'/ | }"
+fi
+
 exit $failed

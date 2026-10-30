@@ -49,7 +49,10 @@ check_item() {
         echo "verify: refused: $path is not a folder directly under $root/${kind/any/trees or consumers}" >&2
         return 1
     fi
-    if [[ ! -d $resolved || ! -f $resolved/$MARKER ]]; then
+    if [[ ! -e $resolved ]]; then
+        echo "verify: refused: $path doesn't exist; the helper removes items older than a day, so make it again" >&2
+        return 1
+    elif [[ ! -d $resolved || ! -f $resolved/$MARKER ]]; then
         echo "verify: refused: $path has no $MARKER marker, so this helper didn't make it" >&2
         return 1
     fi
@@ -79,26 +82,42 @@ ensure_scratch() {
     done < <(find "$SCRATCH/trees" "$SCRATCH/consumers" -mindepth 2 -maxdepth 2 -name "$MARKER" -mtime +0 -print0)
 }
 
-# Prints each distinct compiler warning in the build log $1 once, with the frameworks it appeared in, then the count.
+# Prints each distinct warning in the build log $1 once, with the frameworks it appeared in, then the count. It reads
+# every MSBuild warning form: "<file>(<line>,<col>): warning <code>: <message> [<project>]", and the same without the
+# position or the project, as NuGet and MSBuild targets write them.
 report_warnings() {
-    sed -nE 's/^[[:space:]]*(.+)\(([0-9]+),[0-9]+\): warning ([A-Z]+[0-9]+): (.*) \[([^]]*)\]$/\1:\2\t\3\t\4\t\5/p' "$1" |
-        awk -F'\t' -v prefix="$(realpath -m -- "$SCRATCH")/" '
-            {
-                file = $1
-                if (index(file, prefix) == 1) file = substr(file, length(prefix) + 1)
-                tfm = ""
-                if (match($4, /TargetFramework=[^]]*/)) tfm = substr($4, RSTART + 16, RLENGTH - 16)
-                key = file "\t" $2 "\t" $3
-                if (!(key in tfms)) { order[++n] = key; tfms[key] = "" }
-                if (tfm != "" && index("," tfms[key] ",", "," tfm ",") == 0) tfms[key] = tfms[key] (tfms[key] == "" ? "" : ",") tfm
+    awk -v prefix="$(realpath -m -- "$SCRATCH")/" '
+        {
+            at = index($0, ": warning ")
+            if (at == 0) next
+            place = substr($0, 1, at - 1)
+            rest = substr($0, at + 10)
+            if (!match(rest, /^[A-Za-z]+[0-9]+:/)) next
+            code = substr(rest, 1, RLENGTH - 1)
+            message = substr(rest, RLENGTH + 1)
+            sub(/^ +/, "", message)
+            tfm = ""
+            if (match(message, / \[[^]]*\]$/)) {
+                project = substr(message, RSTART + 2, RLENGTH - 3)
+                message = substr(message, 1, RSTART - 1)
+                if (match(project, /TargetFramework=.*/)) tfm = substr(project, RSTART + 16)
             }
-            END {
-                for (i = 1; i <= n; i++) {
-                    split(order[i], p, "\t")
-                    printf "warning %s %s %s%s\n", p[1], p[2], p[3], (tfms[order[i]] == "" ? "" : " [" tfms[order[i]] "]")
-                }
-                printf "warnings: %d\n", n
-            }'
+            sub(/^[ \t]+/, "", place)
+            sub(/ +$/, "", place)
+            if (match(place, /\([0-9]+(,[0-9]+)*\)$/)) {
+                line = substr(place, RSTART + 1, RLENGTH - 2)
+                sub(/,.*/, "", line)
+                place = substr(place, 1, RSTART - 1) ":" line
+            }
+            if (index(place, prefix) == 1) place = substr(place, length(prefix) + 1)
+            key = place " " code " " message
+            if (!(key in tfms)) { order[++n] = key; tfms[key] = "" }
+            if (tfm != "" && index("," tfms[key] ",", "," tfm ",") == 0) tfms[key] = tfms[key] (tfms[key] == "" ? "" : ",") tfm
+        }
+        END {
+            for (i = 1; i <= n; i++) printf "warning %s%s\n", order[i], (tfms[order[i]] == "" ? "" : " [" tfms[order[i]] "]")
+            printf "warnings: %d\n", n
+        }' "$1"
 }
 
 # For each "// PROBE <tag>: <codes>" line in the consumer's Probes.cs, prints the warnings the build log $1 has there.
@@ -168,12 +187,13 @@ cmd_tree() {
 cmd_consumer() {
     [[ $# -eq 1 || $# -eq 2 ]] || die "usage: verify consumer <tree> [<name>]"
     local tree name dir provider old
+    # First, so its removal of day-old items can't take the tree this checks.
+    ensure_scratch
     tree=$(item trees "$1")
     name=${2:-$(basename "$tree")}
     [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "refused: the name $name must be letters, digits, dots, dashes or underscores"
     provider="$tree/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"
     [[ -f $provider ]] || die "$tree has no EF6 provider project"
-    ensure_scratch
     dir="$SCRATCH/consumers/$name"
     if [[ -e $dir || -L $dir ]]; then
         old=$(item consumers "$dir")
