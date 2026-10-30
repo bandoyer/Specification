@@ -25,7 +25,7 @@ Preconditions:
 - `verify doctor` passes.
 - `C` is a consumer from `verify consumer`, and `E` one from `verify efcore-consumer`, both made from a tree that has #11's methods. Each command looks for `FirstOrDefaultAsync` in its provider's `DbSetExtensions.cs` in the tree. When it finds it, the consumer's `DBSET_READS` lines build.
 
-- **Run.** Run `verify run "$C" > ef6.txt` and `verify run "$E" > efcore.txt`. Each exits 0. The EF6 lines follow [EF6 repository queries](./ef6-repository-queries.md)'s `with-specification-projected`, and the EF Core lines follow [EF Core context-factory repository](./efcore-context-factory-repository.md)'s seven lines. At 84ff252, where #11's branch merged main with #37, they read:
+- **Run.** Run `verify run "$C" > ef6.txt` and `verify run "$E" > efcore.txt`. Each exits 0. The EF6 lines follow [EF6 repository queries](./ef6-repository-queries.md)'s `with-specification-projected`, and the EF Core lines follow [EF Core context-factory repository](./efcore-context-factory-repository.md)'s sixteen lines. At 84ff252, where #11's branch merged main with #37, they read:
 
   ```
   dbset-first: Globex
