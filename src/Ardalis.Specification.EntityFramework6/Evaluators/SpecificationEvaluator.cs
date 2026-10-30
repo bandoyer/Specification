@@ -36,7 +36,7 @@ public class SpecificationEvaluator : ISpecificationEvaluator
 
         return specification.Selector != null
           ? query.Select(specification.Selector)
-          : query.SelectMany(specification.SelectorMany);
+          : query.SelectMany(specification.SelectorMany!);
     }
 
     /// <inheritdoc/>
