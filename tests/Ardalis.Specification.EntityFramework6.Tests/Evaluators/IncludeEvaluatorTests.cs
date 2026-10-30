@@ -89,6 +89,36 @@ public class IncludeEvaluatorTests(TestFactory factory) : IntegrationTest(factor
     }
 
     [Fact]
+    public void QueriesMatch_GivenIncludeExpressionThroughReferenceNavigation()
+    {
+        var spec = new Specification<Store>();
+        spec.Query
+            .Include(x => x.Company.Country);
+
+        var actual = _evaluator.GetQuery(DbContext.Stores, spec);
+        var actualSql = GetQueryString(DbContext, actual);
+
+        var expected = DbContext.Stores
+            .Include($"{nameof(Store.Company)}.{nameof(Company.Country)}");
+        var expectedSql = GetQueryString(DbContext, expected);
+
+        actualSql.Should().Be(expectedSql);
+    }
+
+    [Fact]
+    public void Throws_GivenIncludeExpressionThatIsNotNavigationChain()
+    {
+        var spec = new Specification<Store>();
+        spec.Query
+            .Include(x => x.Products.Where(p => p.Id > 10));
+
+        var action = () => _evaluator.GetQuery(DbContext.Stores, spec);
+
+        action.Should().Throw<ArgumentException>()
+            .WithMessage("*must name a navigation property*");
+    }
+
+    [Fact]
     public void DoesNothing_GivenIncludeString()
     {
         var spec = new Specification<Company>();
