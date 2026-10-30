@@ -26,6 +26,12 @@ verify build <consumer>          build the consumer; prints each distinct warnin
 verify run <consumer>            run the consumer against SQL Server under the shared lock; prints one line per query
 verify warnings <tree>/<path>.csproj [-p:Nullable=<value>]
                                  build a project inside a tree; prints each distinct warning with its frameworks
+verify benchmark <tree> <folder> <method>...
+                                 run <folder>/Program.cs, a BenchmarkDotNet workload, against the tree's EF6 provider;
+                                 keeps its logs in <folder>/results-<sha>/, and fails unless each method has allocations
+verify benchmark compare <base tree> <branch tree> <folder> <workload>...
+                                 run it with the files <folder>/base-files lists compiled in from the base, as MergeBase;
+                                 fails unless each workload has allocations, and the branch's Ratio and RatioSD
 verify cleanup [<item>...]       remove the named scratch items, or every one; never touches anything else
 Scratch root: $SCRATCH
 EOF
@@ -253,6 +259,185 @@ cmd_warnings() {
     return $status
 }
 
+# A size BenchmarkDotNet writes in the Allocated column, such as 656 B, or its - for none.
+SIZE='^([0-9][0-9,]*(\.[0-9]+)? (B|KB|MB|GB)|-)$'
+
+# Prints one line for each row of the method $1 in the GitHub reports after $2, holding that row's cells in the columns
+# $2 names, such as Allocated,Ratio, joined by tabs. A column the report lacks reads "no <column> column".
+report_cells() {
+    local method=$1 columns=$2
+    shift 2
+    awk -F'|' -v method="$method" -v columns="$columns" '
+        BEGIN { n = split(columns, want, ",") }
+        /^\|/ {
+            gsub(/\*\*/, "")
+            for (i = 2; i < NF; i++) { cell[i] = $i; gsub(/^ +| +$/, "", cell[i]) }
+            if (cell[2] == "Method") {
+                for (j = 1; j <= n; j++) { at[j] = 0; for (i = 2; i < NF; i++) if (cell[i] == want[j]) at[j] = i }
+                next
+            }
+            if (cell[2] != method) next
+            line = ""
+            for (j = 1; j <= n; j++) line = line (j > 1 ? "\t" : "") (at[j] ? cell[at[j]] : "no " want[j] " column")
+            print line
+        }' "$@"
+}
+
+# Prints BenchmarkDotNet's reports in the results folder $1, then, for each method after it, the Allocated value of
+# each of its rows, or why it has none. Returns 1 unless every method has a row, and every row a size. A run that fails
+# or that BenchmarkDotNet rejects writes NA, no Allocated column, or no report at all, and exits 0 all the same.
+report_allocations() {
+    local out=$1 method rows values failed=0
+    shift
+    local -a reports=("$out"/results/*-report-github.md)
+    if [[ ! -f ${reports[0]} ]]; then
+        for method; do echo "no allocation $method: BenchmarkDotNet wrote no report in $out/results"; done
+        return 1
+    fi
+    cat "${reports[@]}"
+    for method; do
+        rows=$(report_cells "$method" Allocated "${reports[@]}")
+        if [[ -z $rows ]]; then
+            echo "no allocation $method: no row in the report"; failed=1; continue
+        fi
+        values=$(paste -sd'\t' <<<"$rows" | sed 's/\t/, /g')
+        if grep -qvE "$SIZE" <<<"$rows"; then
+            echo "no allocation $method: $values"; failed=1
+        else
+            echo "allocated $method: $values"
+        fi
+    done
+    return $failed
+}
+
+# Like report_allocations, for each workload after $1: the allocations of its rows MergeBase_<workload> and
+# Branch_<workload>, and the branch row's Ratio and RatioSD over the merge base's. Returns 1 unless each workload has
+# one row of each, both with a size, and the branch row a number in Ratio and in RatioSD.
+report_comparison() {
+    local out=$1 workload base branch alloc ratio sd failed=0
+    shift
+    local -a reports=("$out"/results/*-report-github.md)
+    if [[ ! -f ${reports[0]} ]]; then
+        for workload; do echo "no comparison $workload: BenchmarkDotNet wrote no report in $out/results"; done
+        return 1
+    fi
+    cat "${reports[@]}"
+    for workload; do
+        base=$(report_cells "MergeBase_$workload" Allocated "${reports[@]}")
+        branch=$(report_cells "Branch_$workload" Allocated,Ratio,RatioSD "${reports[@]}")
+        if [[ -z $base || $base == *$'\n'* || -z $branch || $branch == *$'\n'* ]]; then
+            echo "no comparison $workload: MergeBase_$workload and Branch_$workload need one row each in the report"
+            failed=1; continue
+        fi
+        IFS=$'\t' read -r alloc ratio sd <<<"$branch"
+        if grep -qE "$SIZE" <<<"$base" && grep -qE "$SIZE" <<<"$alloc" \
+            && [[ $ratio =~ ^[0-9]+(\.[0-9]+)?$ && $sd =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "compare $workload: allocated $base, then $alloc; Ratio $ratio, RatioSD $sd"
+        else
+            echo "no comparison $workload: allocated $base, then $alloc; Ratio $ratio, RatioSD $sd"; failed=1
+        fi
+    done
+    return $failed
+}
+
+# Makes the scratch item consumers/$3 holding the workload folder $2's Program.cs and a project that references the tree
+# $1's provider, and the results folder $2/$4, which stays beside the workload, outside the scratch root, so cleanup
+# never reaches it. Sets BENCH_DIR and BENCH_OUT.
+prepare_benchmark() {
+    local tree=$1 folder=$2 name=$3 results=$4 provider version old
+    [[ -f $folder/Program.cs ]] || die "$folder has no Program.cs, the workload to run"
+    provider="$tree/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"
+    [[ -f $provider ]] || die "$tree has no EF6 provider project"
+    version=$(sed -nE 's/.*<PackageVersion Include="BenchmarkDotNet" Version="([^"]+)".*/\1/p' "$tree/Directory.Packages.props" 2>/dev/null | head -1) || true
+    [[ -n $version ]] || die "$tree's Directory.Packages.props names no BenchmarkDotNet version"
+    BENCH_OUT="$folder/$results"
+    if [[ -e $BENCH_OUT || -L $BENCH_OUT ]]; then
+        [[ -d $BENCH_OUT && ! -L $BENCH_OUT && -f $BENCH_OUT/$MARKER ]] \
+            || die "refused: $BENCH_OUT exists, and has no $MARKER marker, so this helper didn't make it"
+        rm -rf -- "$BENCH_OUT"
+    fi
+    mkdir "$BENCH_OUT"
+    printf 'benchmark of tree %s\n' "$(head -1 "$tree/$MARKER")" > "$BENCH_OUT/$MARKER"
+    BENCH_DIR="$SCRATCH/consumers/$name"
+    if [[ -e $BENCH_DIR || -L $BENCH_DIR ]]; then
+        old=$(item consumers "$BENCH_DIR")
+        rm -rf -- "$old"
+    fi
+    mkdir "$BENCH_DIR"
+    cp "$folder/Program.cs" "$BENCH_DIR/"
+    sed -e "s|@PROVIDER@|$provider|" -e "s|@BENCHMARKDOTNET@|$version|" "$SKILL_DIR/benchmark-template/Benchmark.csproj.in" > "$BENCH_DIR/Benchmark.csproj"
+    printf 'tree %s\n' "$(head -1 "$tree/$MARKER")" > "$BENCH_DIR/$MARKER"
+}
+
+# Runs the workload in BENCH_DIR, with BenchmarkDotNet's artifacts and the run's whole output in BENCH_OUT. No compiler
+# server or MSBuild node outlives the run, BenchmarkDotNet's own builds of the workload included.
+run_benchmark() {
+    (cd "$BENCH_DIR" && MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 UseSharedCompilation=false \
+        dotnet run -c Release -- --filter '*' --artifacts "$BENCH_OUT") > "$BENCH_OUT/run.log" 2>&1
+}
+
+cmd_benchmark() {
+    if [[ ${1:-} == compare ]]; then
+        shift
+        cmd_compare "$@"
+        return
+    fi
+    [[ $# -ge 3 ]] || die "usage: verify benchmark <tree> <folder> <method>..."
+    local tree folder sha status=0 failed=0
+    ensure_scratch
+    tree=$(item trees "$1")
+    folder=$(realpath -e -- "$2" 2>/dev/null) || die "$2 doesn't exist"
+    shift 2
+    sha=$(head -1 "$tree/$MARKER")
+    prepare_benchmark "$tree" "$folder" "benchmark-${sha:0:12}" "results-${sha:0:12}"
+    run_benchmark || status=$?
+    report_allocations "$BENCH_OUT" "$@" || failed=1
+    echo "benchmark: exit $status"
+    [[ $status -eq 0 ]] || { tail -20 "$BENCH_OUT/run.log" >&2; return $status; }
+    return $failed
+}
+
+# Times the merge base's code against the branch's in one process, so both see the same JIT and machine load. The
+# files <folder>/base-files lists, as paths in the EF6 provider such as Evaluators/IncludeEvaluator.cs, come from the
+# base tree, in the namespace MergeBase. The provider the workload references is the branch tree's.
+cmd_compare() {
+    [[ $# -ge 4 ]] || die "usage: verify benchmark compare <base tree> <branch tree> <folder> <workload>..."
+    local base branch folder file source copy name status=0 failed=0
+    ensure_scratch
+    base=$(item trees "$1")
+    branch=$(item trees "$2")
+    folder=$(realpath -e -- "$3" 2>/dev/null) || die "$3 doesn't exist"
+    shift 3
+    [[ -f $folder/base-files ]] || die "$folder has no base-files, the list of the base's provider files to compile in"
+    local -a files=()
+    while IFS= read -r file; do
+        [[ -n $file ]] || continue
+        [[ $file =~ ^[A-Za-z0-9_][A-Za-z0-9_/.-]*\.cs$ && $file != *..* ]] || die "refused: $file in base-files is not a .cs path inside the provider"
+        [[ -f $base/src/Ardalis.Specification.EntityFramework6/$file ]] || die "$base has no src/Ardalis.Specification.EntityFramework6/$file"
+        files+=("$file")
+    done < "$folder/base-files"
+    [[ ${#files[@]} -gt 0 ]] || die "$folder/base-files lists no file"
+    name="compare-$(basename "$base")-$(basename "$branch")"
+    prepare_benchmark "$branch" "$folder" "$name" "$name"
+    for file in "${files[@]}"; do
+        source="$base/src/Ardalis.Specification.EntityFramework6/$file"
+        copy="$BENCH_DIR/MergeBase/$file"
+        mkdir -p "$(dirname "$copy")"
+        # The provider's global usings, and its parent namespace, which the provider reaches from inside it.
+        {
+            sed -n 's/^\xEF\xBB\xBF//; s/^global using /using /p' "$base/src/Ardalis.Specification.EntityFramework6/GlobalUsings.cs"
+            echo "using Ardalis.Specification;"
+            sed 's/^\xEF\xBB\xBF//; s/\r$//; s/^namespace Ardalis\.Specification\.EntityFramework6;$/namespace MergeBase;/' "$source"
+        } > "$copy"
+        grep -q '^namespace MergeBase;$' "$copy" || die "$file has no line namespace Ardalis.Specification.EntityFramework6;"
+    done
+    run_benchmark || status=$?
+    report_comparison "$BENCH_OUT" "$@" || failed=1
+    echo "benchmark: exit $status"
+    [[ $status -eq 0 ]] || { tail -20 "$BENCH_OUT/run.log" >&2; return $status; }
+    return $failed
+}
+
 cmd_cleanup() {
     local entry failed=0
     if [[ $# -gt 0 ]]; then
@@ -278,6 +463,7 @@ case $command in
     build) cmd_build "$@" ;;
     run) cmd_run "$@" ;;
     warnings) cmd_warnings "$@" ;;
+    benchmark) cmd_benchmark "$@" ;;
     cleanup) cmd_cleanup "$@" ;;
     help | -h | --help) usage ;;
     *) usage >&2; exit 2 ;;

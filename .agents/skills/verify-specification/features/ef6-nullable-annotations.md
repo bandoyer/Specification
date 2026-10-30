@@ -23,6 +23,7 @@ Preconditions:
 - `verify doctor` passes.
 - `T` is a tree from `verify tree <commit>`.
 
+- **Warning report.** Run `.agents/skills/verify-specification/tests/warnings.sh`. It prints three `ok:` lines and exits 0: real MSBuild warnings with and without a code, and NuGet's, the compiler's and MSBuild's other forms, each counted. A `warnings: 0` from the two recipes below counts only after this passes, since a report that misses a form reads as no warning.
 - **Probes.** Run `C=$(verify consumer "$T")`, then `verify build "$C"`. Each `probe` line shows the warnings its line got. With the provider annotated, each probe's `got` matches its `an annotated provider gives`. Against a provider without annotations, every probe gets `none`.
 - **Provider.** Run `verify warnings "$T/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"`. It ends with `warnings: 0` and `build: exit 0`. Add `-p:Nullable=enable` to see what nullable would report for a commit that has it off.
 - **Test project.** Run `verify warnings "$T/tests/Ardalis.Specification.EntityFramework6.Tests/Ardalis.Specification.EntityFramework6.Tests.csproj"`. It ends with `warnings: 0` and `build: exit 0`.

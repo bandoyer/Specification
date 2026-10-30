@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Checks that `verify warnings` counts every warning form a build writes: a compiler warning with its position and
-# project, one repeated for another framework, a NuGet warning with neither position nor framework, a target's warning
-# with a position and no project, a target's warning with no code, and an MSBuild warning with no file. A stand-in
-# dotnet on PATH writes the log, so no real build runs. The [pr] suite in skillflow.toml runs it.
-# Usage: warnings.sh [<helper>], where the helper defaults to ../bin/verify; exits 1 when the report differs.
+# Checks that `verify warnings` counts every warning form a build writes. First, a real `dotnet build` of the two
+# projects in msbuild-warnings/, whose targets write a warning with a code and one without, in MSBuild's own form.
+# Then a stand-in dotnet on PATH writes the forms no small project yields: a compiler warning with its position and
+# project, one repeated for another framework, a NuGet warning with neither position nor framework, and an MSBuild
+# warning with no file. The [pr] suite in skillflow.toml runs it, and so does the recipe for `verify warnings`.
+# Usage: warnings.sh [<helper>], where the helper defaults to ../bin/verify; exits 1 when a report differs.
 set -uo pipefail
 
 HERE=$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")" && pwd)
@@ -14,7 +15,41 @@ STANDIN=$(mktemp -d /tmp/verify-specification-standin.XXXXXX)
 trap 'rm -rf -- "$SCRATCH" "$STANDIN"' EXIT
 
 TREE=$("$V" tree HEAD) || { echo "FAIL: verify tree HEAD"; exit 1; }
-PROJECT=$TREE/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj
+SHA=$(basename "$TREE")
+failed=0
+
+# report <case> <expected> <helper arguments>: runs the helper and compares its whole report.
+report() {
+    local case=$1 expected=$2 actual
+    shift 2
+    actual=$("$V" warnings "$@" 2>&1)
+    if [[ $actual == "$expected" ]]; then
+        echo "ok: $case"
+    else
+        echo "FAIL: $case; verify warnings reported:"
+        printf '%s\n' "$actual"
+        echo "expected:"
+        printf '%s\n' "$expected"
+        failed=1
+    fi
+}
+
+# Each project in a folder of its own inside the tree, so the two builds don't share an obj folder.
+for project in WarningForms UncodedWarning; do
+    mkdir "$TREE/$project"
+    cp "$HERE/msbuild-warnings/$project.csproj" "$TREE/$project/"
+done
+
+report "a real build's warnings with and without a code are both counted" \
+"warning trees/$SHA/WarningForms/WarningForms.csproj:7 VERIFY1001 Coded warning from an actual MSBuild target
+warning trees/$SHA/WarningForms/WarningForms.csproj:8 (no code) Warning without an optional Code from an actual MSBuild target
+warnings: 2
+build: exit 0" "$TREE/WarningForms/WarningForms.csproj"
+
+report "a real build's only warning, which has no code, is counted" \
+"warning trees/$SHA/UncodedWarning/UncodedWarning.csproj:7 (no code) An actual MSBuild warning whose optional Code is absent
+warnings: 1
+build: exit 0" "$TREE/UncodedWarning/UncodedWarning.csproj"
 
 # `dotnet build <project> ...` prints these lines, as MSBuild would, and succeeds.
 cat > "$STANDIN/dotnet" <<'EOF'
@@ -27,29 +62,16 @@ $project : warning NU1902: Package 'Example' 1.0.0 has a known moderate severity
 $dir/Evaluators/OrderEvaluator.cs(20,13): warning CS8600: Converting null literal or possible null value to non-nullable type. [$project::TargetFramework=net8.0]
 $dir/Evaluators/OrderEvaluator.cs(20,13): warning CS8600: Converting null literal or possible null value to non-nullable type. [$project::TargetFramework=net472]
 $dir/Evaluators/OrderEvaluator.cs(20,13): warning CS8600: Converting null literal or possible null value to non-nullable type. [$project::TargetFramework=net8.0]
-$project(12,5): warning NU9999: Emitted by a target
-$project(13,5): warning : Emitted by a target without a code [$project]
 MSBUILD : warning MSB4011: Imported twice
 LOG
 EOF
 chmod +x "$STANDIN/dotnet"
 
-SHA=$(basename "$TREE")
-EXPECTED="warning trees/$SHA/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj NU1902 Package 'Example' 1.0.0 has a known moderate severity vulnerability.
+PATH=$STANDIN:$PATH report "the NuGet, repeated compiler and MSBuild forms are each counted once" \
+"warning trees/$SHA/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj NU1902 Package 'Example' 1.0.0 has a known moderate severity vulnerability.
 warning trees/$SHA/src/Ardalis.Specification.EntityFramework6/Evaluators/OrderEvaluator.cs:20 CS8600 Converting null literal or possible null value to non-nullable type. [net8.0,net472]
-warning trees/$SHA/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj:12 NU9999 Emitted by a target
-warning trees/$SHA/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj:13 (no code) Emitted by a target without a code
 warning MSBUILD MSB4011 Imported twice
-warnings: 5
-build: exit 0"
+warnings: 3
+build: exit 0" "$TREE/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"
 
-ACTUAL=$(PATH=$STANDIN:$PATH "$V" warnings "$PROJECT" 2>&1)
-if [[ $ACTUAL == "$EXPECTED" ]]; then
-    echo "ok: verify warnings reports each of the 5 distinct warnings in every form"
-else
-    echo "FAIL: verify warnings reported:"
-    printf '%s\n' "$ACTUAL"
-    echo "expected:"
-    printf '%s\n' "$EXPECTED"
-    exit 1
-fi
+exit $failed

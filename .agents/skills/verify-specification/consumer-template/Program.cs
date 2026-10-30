@@ -92,6 +92,20 @@ static class Shop
         await Print<Company>("include-reference", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include(c => c.Country)))).Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"})")));
         await Print<Company>("include-then-include", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include(c => c.Stores).ThenInclude(s => s.Products))))
             .Select(c => $"{c.Name} [{string.Join("; ", c.Stores.OrderBy(s => s.Name, StringComparer.Ordinal).Select(s => $"{s.Name}: {Sorted(s.Products.Select(p => p.Name))}"))}]")));
+        // Two chains from one navigation (#3). The second, Stores.Company.Country, reaches each company again and loads
+        // its Country. An exception prints as the result, so a tree from before #3's fix still prints every line.
+        await Print<Company>("include-two-chains", async (repo, _) =>
+        {
+            try
+            {
+                return Sorted((await repo.ListAsync(Spec<Company>(q => q.Include(c => c.Stores).ThenInclude(s => s.Products).Include(c => c.Stores).ThenInclude(s => s.Company).ThenInclude(c => c.Country))))
+                    .Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"}) [{string.Join("; ", c.Stores.OrderBy(s => s.Name, StringComparer.Ordinal).Select(s => $"{s.Name}: {Sorted(s.Products.Select(p => p.Name))}"))}]"));
+            }
+            catch (Exception e)
+            {
+                return $"{e.GetType().Name}: {e.Message}";
+            }
+        });
         await Print<Company>("include-string", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include("Country")))).Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"})")));
         await Print<Company>("include-strings", async (repo, _) => Sorted((await repo.ListAsync(Spec<Company>(q => q.Include("Country").Include("Stores.Products"))))
             .Select(c => $"{c.Name} ({c.Country?.Name ?? "not loaded"}) [{string.Join("; ", c.Stores.OrderBy(s => s.Name, StringComparer.Ordinal).Select(s => $"{s.Name}: {Sorted(s.Products.Select(p => p.Name))}"))}]")));

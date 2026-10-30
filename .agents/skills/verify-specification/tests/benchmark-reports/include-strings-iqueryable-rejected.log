@@ -1,0 +1,13 @@
+// Validating benchmarks:
+// Benchmark IncludeBenchmark.IncludeStep: DefaultJob [Spec=None]
+//    * Benchmark IncludeBenchmark.IncludeStep returns a deferred execution result (IQueryable<Company>). You need to either change the method declaration to return a materialized result or consume it on your own. You can use .Consume() extension method to do that.
+
+// Benchmark IncludeBenchmark.IncludeStep: DefaultJob [Spec=OneString]
+//    * Benchmark IncludeBenchmark.IncludeStep returns a deferred execution result (IQueryable<Company>). You need to either change the method declaration to return a materialized result or consume it on your own. You can use .Consume() extension method to do that.
+
+// Benchmark IncludeBenchmark.IncludeStep: DefaultJob [Spec=TwoStrings]
+//    * Benchmark IncludeBenchmark.IncludeStep returns a deferred execution result (IQueryable<Company>). You need to either change the method declaration to return a materialized result or consume it on your own. You can use .Consume() extension method to do that.
+
+// Benchmark IncludeBenchmark.IncludeStep: DefaultJob [Spec=StringAndExpression]
+//    * Benchmark IncludeBenchmark.IncludeStep returns a deferred execution result (IQueryable<Company>). You need to either change the method declaration to return a materialized result or consume it on your own. You can use .Consume() extension method to do that.
+
