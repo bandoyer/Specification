@@ -174,5 +174,17 @@ public class Repository_ListTests(TestFactory factory) : IntegrationTest(factory
         var action = () => repo.AsAsyncEnumerable(spec);
         action.Should().Throw<NotImplementedException>();
     }
+
+    [Fact]
+    public void AsAsyncEnumerable_ThrowsNotImplementedException_GivenProjectionSpec()
+    {
+        var repo = new Repository<Country>(DbContext);
+        var spec = new Specification<Country, string?>();
+        spec.Query.Select(x => x.Name);
+
+        Func<IAsyncEnumerable<string?>> action = () => repo.AsAsyncEnumerable(spec);
+
+        action.Should().Throw<NotImplementedException>();
+    }
 #endif
 }
