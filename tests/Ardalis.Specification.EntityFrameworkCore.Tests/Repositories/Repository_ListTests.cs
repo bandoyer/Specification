@@ -192,7 +192,7 @@ public class Repository_ListTests(TestFactory factory) : IntegrationTest(factory
     }
 
     [Fact]
-    public async Task AsAsyncEnumerable_Throws_GivenProjectionSpecAndCancellationAfterFirstItem()
+    public async Task AsAsyncEnumerable_ThrowsOperationCanceledException_GivenProjectionSpecAndCancellationAfterFirstItem()
     {
         await SeedCountriesAsync();
         var repo = new Repository<Country>(DbContext);
@@ -237,6 +237,16 @@ public class Repository_ListTests(TestFactory factory) : IntegrationTest(factory
         var sut = () => repo.AsAsyncEnumerable(new Specification<Country, string?>());
 
         sut.Should().Throw<SelectorNotFoundException>();
+    }
+
+    [Fact]
+    public void AsAsyncEnumerable_ThrowsArgumentNullExceptionWhenCalled_GivenNullProjectionSpec()
+    {
+        IReadRepositoryBase<Country> repo = new Repository<Country>(DbContext);
+
+        var sut = () => repo.AsAsyncEnumerable<string?>(null!);
+
+        sut.Should().Throw<ArgumentNullException>().WithParameterName("specification");
     }
 
     private Task SeedCountriesAsync() => SeedRangeAsync<Country>(
