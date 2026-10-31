@@ -1,7 +1,8 @@
 // The EF Core provider's consumer. It seeds a database of its own on SQL Server, then enumerates AsAsyncEnumerable
 // through RepositoryBase<T> and through ContextFactoryRepositoryBaseOfT, whose factory counts the contexts it makes and
 // how many of them are disposed. It also reads single results through ContextFactoryRepositoryBaseOfT. Then it queries a
-// shop through the DbSet extensions (Shop.cs). It prints one "label: result" line per query, and drops the database.
+// shop through the DbSet extensions (Shop.cs), and streams a projection through both repositories and the DbSet
+// (Projected.cs). It prints one "label: result" line per query, and drops the database.
 // `verify run` runs it. The output holds no ids or paths, so two trees' outputs compare with diff.
 using System.Linq.Expressions;
 using Ardalis.Specification;
@@ -35,6 +36,7 @@ try
 {
     await Atlas.Query(options);
     await Shop.Query(options);
+    await Projected.Query(options);
 }
 finally
 {

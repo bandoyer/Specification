@@ -198,6 +198,23 @@ static class Shop
         await Print<Company>("dbset-first-default", (_, db) => Reads.OrException(async () => Show((await db.Companies.FirstOrDefaultAsync(default!))?.Name)));
         await Print<Company>("dbset-first-null", (_, db) => Reads.OrException(async () => Show((await db.Companies.FirstOrDefaultAsync(null!))?.Name)));
 #endif
+        // EF6 has no async streams, so AsAsyncEnumerable throws when called. The line ends with the element type the
+        // call bound to: Store for the entity overload, String for #16's projection overload.
+        await Print<Store>("async-enumerable", (repo, _) => Task.FromResult(Called(() => repo.AsAsyncEnumerable(Spec<Store>(q => q.Where(s => s.Company.Name == "Acme"))))));
+        await Print<Store>("projected-async-enumerable", (repo, _) => Task.FromResult(Called(() => repo.AsAsyncEnumerable(Spec<Store, string>(q => { q.Where(s => s.Company.Name == "Acme"); q.Select(s => s.Name); })))));
+    }
+
+    static string Called<TItem>(Func<IAsyncEnumerable<TItem>> call)
+    {
+        try
+        {
+            call();
+            return $"returned ({typeof(TItem).Name})";
+        }
+        catch (Exception e)
+        {
+            return $"{e.GetType().Name} when called ({typeof(TItem).Name})";
+        }
     }
 
     static Specification<T> Spec<T>(Action<ISpecificationBuilder<T>> build)

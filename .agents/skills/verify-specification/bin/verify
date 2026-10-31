@@ -216,11 +216,12 @@ cmd_efcore_consumer() {
 # Makes the consumer consumers/<name> from the template folder $1, referencing the provider project src/$2 of the tree
 # $4, which errors call the $3 provider. The name $5 defaults to the tree's short sha. The template's Consumer.csproj.in
 # names the provider @PROVIDER@, and may name @SQLSERVER@, the version of Microsoft.EntityFrameworkCore.SqlServer in the
-# tree's Directory.Packages.props. It sets @DEFINES@ to ;DBSET_READS when the tree has #11's DbSet extensions, which
-# the consumer's DBSET_READS lines call, and to nothing before them. For such a tree it also copies the template's
-# with-dbset-reads/ files. Every consumer also gets consumer-shared/'s files.
+# tree's Directory.Packages.props. @DEFINES@ holds ;DBSET_READS when the tree has #11's DbSet extensions, which the
+# consumer's DBSET_READS lines call, and ;PROJECTED_ASYNC_ENUMERABLE when IReadRepositoryBase<T> has #16's
+# AsAsyncEnumerable<TResult>, which its PROJECTED_ASYNC_ENUMERABLE lines call. For a tree with the DbSet extensions it
+# also copies the template's with-dbset-reads/ files. Every consumer also gets consumer-shared/'s files.
 make_consumer() {
-    local template=$SKILL_DIR/$1 project=$2 label=$3 tree name dir provider sqlserver defines= old
+    local template=$SKILL_DIR/$1 project=$2 label=$3 tree name dir provider sqlserver defines= dbset_reads= old
     shift 3
     # First, so its removal of day-old items can't take the tree this checks.
     ensure_scratch
@@ -233,7 +234,9 @@ make_consumer() {
     if grep -q @SQLSERVER@ "$template/Consumer.csproj.in" && [[ -z $sqlserver ]]; then
         die "$tree's Directory.Packages.props names no Microsoft.EntityFrameworkCore.SqlServer version"
     fi
-    grep -q FirstOrDefaultAsync "$tree/src/$project/Extensions/DbSetExtensions.cs" 2>/dev/null && defines=';DBSET_READS'
+    grep -q FirstOrDefaultAsync "$tree/src/$project/Extensions/DbSetExtensions.cs" 2>/dev/null && dbset_reads=1 defines=';DBSET_READS'
+    grep -q 'AsAsyncEnumerable<TResult>' "$tree/src/Ardalis.Specification/IReadRepositoryBase.cs" 2>/dev/null \
+        && defines+=';PROJECTED_ASYNC_ENUMERABLE'
     dir="$SCRATCH/consumers/$name"
     if [[ -e $dir || -L $dir ]]; then
         old=$(item consumers "$dir")
@@ -241,7 +244,7 @@ make_consumer() {
     fi
     mkdir "$dir"
     cp "$template"/*.cs "$SKILL_DIR"/consumer-shared/*.cs "$dir/"
-    [[ -z $defines ]] || cp "$template"/with-dbset-reads/*.cs "$dir/"
+    [[ -z $dbset_reads ]] || cp "$template"/with-dbset-reads/*.cs "$dir/"
     sed -e "s|@PROVIDER@|$provider|" -e "s|@SQLSERVER@|$sqlserver|" -e "s|@DEFINES@|$defines|" \
         "$template/Consumer.csproj.in" > "$dir/Consumer.csproj"
     printf 'tree %s\n' "$(head -1 "$tree/$MARKER")" > "$dir/$MARKER"

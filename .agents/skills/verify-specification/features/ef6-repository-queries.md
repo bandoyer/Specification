@@ -75,4 +75,5 @@ Preconditions:
 - Each query opens a fresh context, so a navigation holds only what that query's own `Include` loaded. One shared context would fill navigations from earlier queries and hide a missing include.
 - A run waits while the test suite holds the shared lock, and the first run of a consumer `verify build` hasn't built builds it first. A long pause before the first line is one of those.
 - A consumer from a tree with #11's DbSet extensions also prints [DbSet read extensions](./dbset-read-extensions.md)'s `dbset-` lines after `with-specification-projected`, so a diff of a tree from before #11 with one after shows them as added.
+- The consumer prints [Projected AsAsyncEnumerable](./projected-async-enumerable.md)'s two lines last, for every tree. A diff of a tree from before #16 with one after shows `projected-async-enumerable` ending `(Store)`, then `(String)`.
 - `Globex Bergen` has no products, so `include-then-include` prints `Globex Bergen: ` with nothing after the colon.

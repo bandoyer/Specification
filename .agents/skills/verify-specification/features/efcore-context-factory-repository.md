@@ -58,5 +58,6 @@ Preconditions:
 - Main before #39's fix, at `c569ae7`, prints `Austria; 1 context made, 1 disposed` on `factory-single-two-matches` and `factory-single-projected-two-matches`: both overloads called `FirstOrDefaultAsync`, which returns the first row SQL Server reads.
 - A `factory-async-enumerable-cancel` line that lists all three names means the repository dropped the caller's token. A `factory-` line with fewer contexts disposed than made means a context leaked.
 - The cancel lines show `TaskCanceledException`, which SqlClient throws for EF Core. It derives from `OperationCanceledException`.
+- The run prints [Projected AsAsyncEnumerable](./projected-async-enumerable.md)'s lines last. A diff of a tree from before #16 with one after shows them changing too.
 - This feature has no probes. For a consumer from a tree with #11's DbSet extensions, `verify build` prints the probe lines of [DbSet read extensions](./dbset-read-extensions.md).
 - A run waits while the test suite holds the shared lock, and the first run of a consumer `verify build` hasn't built builds it first. A long pause before the first line is one of those.
