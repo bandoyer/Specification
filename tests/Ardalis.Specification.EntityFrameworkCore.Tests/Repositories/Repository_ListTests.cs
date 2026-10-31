@@ -1,4 +1,6 @@
-﻿namespace Tests.Repositories;
+﻿using System.Threading;
+
+namespace Tests.Repositories;
 
 [Collection("SharedCollection")]
 public class Repository_ListTests(TestFactory factory) : IntegrationTest(factory)
@@ -172,5 +174,98 @@ public class Repository_ListTests(TestFactory factory) : IntegrationTest(factory
         {
             item.Name.Should().Be($"b{suffix++}");
         }
+    }
+
+    [Fact]
+    public async Task AsAsyncEnumerable_ReturnsFilteredProjections_GivenProjectionSpec()
+    {
+        await SeedCountriesAsync();
+        IReadRepositoryBase<Country> repo = new Repository<Country>(DbContext);
+
+        var names = new List<string?>();
+        await foreach (string? name in repo.AsAsyncEnumerable(NamesStartingWithB()))
+        {
+            names.Add(name);
+        }
+
+        names.Should().Equal("b1", "b2", "b3");
+    }
+
+    [Fact]
+    public async Task AsAsyncEnumerable_ThrowsOperationCanceledException_GivenProjectionSpecAndCancellationAfterFirstItem()
+    {
+        await SeedCountriesAsync();
+        var repo = new Repository<Country>(DbContext);
+        using var cts = new CancellationTokenSource();
+
+        var names = new List<string?>();
+        var enumerate = async () =>
+        {
+            await foreach (var name in repo.AsAsyncEnumerable(NamesStartingWithB()).WithCancellation(cts.Token))
+            {
+                names.Add(name);
+                cts.Cancel();
+            }
+        };
+
+        await enumerate.Should().ThrowAsync<OperationCanceledException>();
+        names.Should().Equal("b1");
+    }
+
+    [Fact]
+    public async Task AsAsyncEnumerable_IgnoresPostProcessingAction_GivenProjectionSpec()
+    {
+        await SeedCountriesAsync();
+        var repo = new Repository<Country>(DbContext);
+        var spec = NamesStartingWithB();
+        spec.Query.PostProcessingAction(items => items.Take(1));
+
+        var names = new List<string?>();
+        await foreach (var name in repo.AsAsyncEnumerable(spec))
+        {
+            names.Add(name);
+        }
+
+        names.Should().Equal("b1", "b2", "b3");
+    }
+
+    [Fact]
+    public void AsAsyncEnumerable_ThrowsSelectorNotFoundExceptionWhenCalled_GivenProjectionSpecWithoutSelector()
+    {
+        var repo = new Repository<Country>(DbContext);
+
+        var sut = () => repo.AsAsyncEnumerable(new Specification<Country, string?>());
+
+        sut.Should().Throw<SelectorNotFoundException>();
+    }
+
+    [Fact]
+    public void AsAsyncEnumerable_ThrowsArgumentNullExceptionWhenCalled_GivenNullProjectionSpec()
+    {
+        IReadRepositoryBase<Country> repo = new Repository<Country>(DbContext);
+
+        var sut = () => repo.AsAsyncEnumerable<string?>(null!);
+
+        sut.Should().Throw<ArgumentNullException>().WithParameterName("specification");
+    }
+
+    private Task SeedCountriesAsync() => SeedRangeAsync<Country>(
+    [
+        new() { Name = "a" },
+        new() { Name = "b2" },
+        new() { Name = "c" },
+        new() { Name = "b1" },
+        new() { Name = "b3" },
+        new() { Name = null },
+    ]);
+
+    private static Specification<Country, string?> NamesStartingWithB()
+    {
+        var spec = new Specification<Country, string?>();
+        spec.Query
+            .Search(x => x.Name, "b%")
+            .OrderBy(x => x.Name)
+            .Select(x => x.Name);
+        return spec;
     }
 }

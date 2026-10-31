@@ -116,6 +116,14 @@ public static class DbSetExtensions
         return SpecificationEvaluator.Default.GetQuery(source, specification).AsAsyncEnumerable();
     }
 
+    public static IAsyncEnumerable<TResult> AsAsyncEnumerable<TSource, TResult>(
+      this DbSet<TSource> source,
+      ISpecification<TSource, TResult> specification)
+      where TSource : class
+    {
+        return SpecificationEvaluator.Default.GetQuery(source, specification).AsAsyncEnumerable();
+    }
+
     public static IQueryable<TSource> WithSpecification<TSource>(
       this IQueryable<TSource> source,
       ISpecification<TSource> specification,

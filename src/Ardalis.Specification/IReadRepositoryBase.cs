@@ -158,5 +158,19 @@ public interface IReadRepositoryBase<T> where T : class
     ///  Returns an IAsyncEnumerable which can be enumerated asynchronously.
     /// </returns>
     IAsyncEnumerable<T> AsAsyncEnumerable(ISpecification<T> specification);
+
+    /// <summary>
+    /// Finds all entities of <typeparamref name="T" />, that matches the encapsulated query logic of the
+    /// <paramref name="specification"/>, from the database.
+    /// <para>
+    /// Projects each entity into a new form, being <typeparamref name="TResult" />.
+    /// </para>
+    /// </summary>
+    /// <typeparam name="TResult">The type of the value returned by the projection.</typeparam>
+    /// <param name="specification">The encapsulated query logic.</param>
+    /// <returns>
+    ///  Returns an IAsyncEnumerable which can be enumerated asynchronously.
+    /// </returns>
+    IAsyncEnumerable<TResult> AsAsyncEnumerable<TResult>(ISpecification<T, TResult> specification);
 #endif
 }

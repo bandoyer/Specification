@@ -107,7 +107,7 @@ Customer? customer = await dbContext.Customers.SingleOrDefaultAsync(new Customer
 
 Each method except `AsAsyncEnumerable` takes a `CancellationToken` after the specification. To call one without a token, leave the argument out, or pass `CancellationToken.None`. With these methods in scope, `dbContext.Customers.FirstOrDefaultAsync(default)` passes `default` as the specification and throws `ArgumentNullException`, and so do `SingleOrDefaultAsync`, `CountAsync` and `AnyAsync`.
 
-Given a specification with a `Select`, `ToListAsync`, `ToEnumerableAsync`, `FirstOrDefaultAsync` and `SingleOrDefaultAsync` return the projected type.
+Given a specification with a `Select`, `ToListAsync`, `ToEnumerableAsync`, `FirstOrDefaultAsync`, `SingleOrDefaultAsync` and `AsAsyncEnumerable` return the projected type.
 
 ```csharp
 public class CustomerNameSpec : Specification<Customer, string>
@@ -134,4 +134,10 @@ List<string> names = await dbContext.Customers.ToListAsync(namesSpec);
 IEnumerable<string> nameSequence = await dbContext.Customers.ToEnumerableAsync(namesSpec);
 string? firstName = await dbContext.Customers.FirstOrDefaultAsync(namesSpec);
 string? name = await dbContext.Customers.SingleOrDefaultAsync(new CustomerNameByIdSpec(1));
+
+// EF Core only.
+await foreach (string customerName in dbContext.Customers.AsAsyncEnumerable(namesSpec))
+{
+    Console.WriteLine(customerName);
+}
 ```

@@ -181,6 +181,12 @@ public abstract class RepositoryBase<T> : IRepositoryBase<T> where T : class
     {
         throw new NotImplementedException();
     }
+
+    /// <inheritdoc/>
+    public virtual IAsyncEnumerable<TResult> AsAsyncEnumerable<TResult>(ISpecification<T, TResult> specification)
+    {
+        throw new NotImplementedException();
+    }
 #endif
 
     /// <summary>

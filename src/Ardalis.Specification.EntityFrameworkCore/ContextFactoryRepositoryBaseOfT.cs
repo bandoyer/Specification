@@ -119,18 +119,26 @@ public abstract class ContextFactoryRepositoryBaseOfT<TEntity, TContext> : IRepo
     {
         // Here, since the iterator below runs nothing until the caller enumerates.
         ArgumentNullException.ThrowIfNull(specification);
-        return AsAsyncEnumerableCore(specification, default);
+        return AsAsyncEnumerableCore(dbContext => ApplySpecification(specification, dbContext), default);
+    }
+
+    /// <inheritdoc/>
+    public IAsyncEnumerable<TResult> AsAsyncEnumerable<TResult>(ISpecification<TEntity, TResult> specification)
+    {
+        // Here, since the iterator below runs nothing until the caller enumerates.
+        ArgumentNullException.ThrowIfNull(specification);
+        return AsAsyncEnumerableCore(dbContext => ApplySpecification(specification, dbContext), default);
     }
 
     // An async iterator, so each enumeration creates its own context and disposes it when the enumeration ends, the
-    // caller stops early, or the token from WithCancellation is cancelled.
-    private async IAsyncEnumerable<TEntity> AsAsyncEnumerableCore(ISpecification<TEntity> specification,
+    // caller stops early, or the token from WithCancellation is cancelled. The query runs once the context exists.
+    private async IAsyncEnumerable<TResult> AsAsyncEnumerableCore<TResult>(Func<TContext, IQueryable<TResult>> query,
       [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using var dbContext = _dbContextFactory.CreateDbContext();
-        await foreach (var entity in ApplySpecification(specification, dbContext).AsAsyncEnumerable().WithCancellation(cancellationToken))
+        await foreach (var item in query(dbContext).AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
-            yield return entity;
+            yield return item;
         }
     }
 

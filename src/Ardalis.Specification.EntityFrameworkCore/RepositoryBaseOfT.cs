@@ -176,6 +176,12 @@ public abstract class RepositoryBase<T> : IRepositoryBase<T> where T : class
         return ApplySpecification(specification).AsAsyncEnumerable();
     }
 
+    /// <inheritdoc/>
+    public virtual IAsyncEnumerable<TResult> AsAsyncEnumerable<TResult>(ISpecification<T, TResult> specification)
+    {
+        return ApplySpecification(specification).AsAsyncEnumerable();
+    }
+
     /// <summary>
     /// Filters the entities  of <typeparamref name="T"/>, to those that match the encapsulated query logic of the
     /// <paramref name="specification"/>.
