@@ -2,7 +2,7 @@
 // caller with nullable enabled meets them. `verify efcore-consumer` copies this file only from a tree that has #11's
 // extensions. Nothing calls these methods. `verify build` lists the warnings each PROBE line raises, beside the codes
 // it names.
-using Ardalis.Specification.EntityFrameworkCore;
+using OpenSpecification.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 // A `default` argument binds to the specification overload, whose parameter isn't nullable, so it warns; EF Core's

@@ -1,35 +1,19 @@
+# OpenSpecification
 
-[![NuGet](https://img.shields.io/nuget/v/Ardalis.Specification.svg)](https://www.nuget.org/packages/Ardalis.Specification)
-[![Actions Status](https://github.com/ardalis/Specification/actions/workflows/ci.yml/badge.svg)](https://github.com/ardalis/Specification/actions/workflows/ci.yml)
-[![Generic badge](https://img.shields.io/badge/Documentation-Ardalis.Specification-Green.svg)](https://ardalis.github.io/Specification/)
+A .NET library for building query specifications.
 
-<a href="https://twitter.com/intent/follow?screen_name=ardalis">
-    <img src="https://img.shields.io/twitter/follow/ardalis.svg?label=Follow%20@ardalis" alt="Follow @ardalis" />
-</a> &nbsp; <a href="https://twitter.com/intent/follow?screen_name=fiseni">
-    <img src="https://img.shields.io/twitter/follow/fiseni.svg?label=Follow%20@fiseni" alt="Follow @fiseni" />
-</a> &nbsp; <a href="https://twitter.com/intent/follow?screen_name=nimblepros">
-    <img src="https://img.shields.io/twitter/follow/nimblepros.svg?label=Follow%20@nimblepros" alt="Follow @nimblepros" />
-</a>
-
-[![Stars Sparkline](https://stars.medv.io/ardalis/specification.svg)](https://stars.medv.io/ardalis/specification)
-
-## Announcement!
-
-Ardalis.Specification is moving to a commercial license. [Tell me more](https://nimbletools.io/news/ardalis-nuget-packages/)
+OpenSpecification continues Ardalis.Specification under the MIT license. To move a project from Ardalis.Specification 9.x, follow the migration at the top of [CHANGELOG.md](CHANGELOG.md).
 
 ## Give a Star! :star:
 If you like or are using this project, please give it a star. Thanks!
-# Specification
-
-A .NET library for building query specifications. Currently used in Microsoft reference application [eShopOnWeb](https://github.com/dotnet-architecture/eShopOnWeb), which is the best place to see it in action, as well as the [Clean Architecture solution template](https://github.com/ardalis/cleanarchitecture). Check out Steve "ardalis" Smith's associated (free!) eBook, [Architecting Modern Web Applications with ASP.NET Core and Azure](https://aka.ms/webappebook), as well.
 
 ## Documentation
 
-### [Read the Documentation](https://ardalis.github.io/Specification/)
+### [Read the Documentation](https://github.com/bandoyer/OpenSpecification/tree/main/docs)
 
 ## Releases
 
-The change log for `version 9` and the list of breaking changes can be found [here](https://github.com/ardalis/Specification/issues/427).
+[CHANGELOG.md](CHANGELOG.md) lists each version's changes and breaking changes.
 
 ## Sample Usage
 
@@ -59,11 +43,11 @@ var customers = await _repository.ListAsync(spec, cancellationToken);
 ```
 Specifications should be defined in an easily-discovered location in the application, so developers can easily reuse them. The use of this pattern helps to eliminate many commonly duplicated lambda expressions in applications, reducing bugs associated with this duplication.
 
-We're shipping a built-in repository implementation [RepositoryBase](https://github.com/ardalis/Specification/blob/main/src/Ardalis.Specification.EntityFrameworkCore/RepositoryBaseOfT.cs), ready to be consumed in your apps. You can use it as a reference and create your own custom repository implementation.
+We're shipping a built-in repository implementation [RepositoryBase](src/OpenSpecification.EntityFrameworkCore/RepositoryBaseOfT.cs), ready to be consumed in your apps. You can use it as a reference and create your own custom repository implementation.
 
 ## Reference
 
-Please refer to the documentation for [related resources](https://specification.ardalis.com/related-resources/).
+Please refer to the documentation for [related resources](docs/related-resources/).
 
 Pluralsight resources:
 

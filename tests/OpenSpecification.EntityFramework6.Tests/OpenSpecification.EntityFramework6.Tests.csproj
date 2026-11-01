@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net9.0;net472;</TargetFrameworks>
+    <OutputType>Library</OutputType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MartinCostello.SqlLocalDb" />
+    <PackageReference Include="EntityFramework" />
+    <PackageReference Include="Respawn" />
+    <PackageReference Include="System.Data.DataSetExtensions" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <PackageReference Include="Polyfill">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\OpenSpecification\OpenSpecification.csproj" />
+    <ProjectReference Include="..\..\src\OpenSpecification.EntityFramework6\OpenSpecification.EntityFramework6.csproj" />
+    <ProjectReference Include="..\OpenSpecification.Tests\OpenSpecification.Tests.csproj" />
+  </ItemGroup>
+
+</Project>

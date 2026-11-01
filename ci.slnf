@@ -1,13 +1,13 @@
 {
   "solution": {
-    "path": "Ardalis.Specification.sln",
+    "path": "OpenSpecification.sln",
     "projects": [
-      "src\\Ardalis.Specification.EntityFramework6\\Ardalis.Specification.EntityFramework6.csproj",
-      "tests\\Ardalis.Specification.EntityFramework6.Tests\\Ardalis.Specification.EntityFramework6.Tests.csproj",
-      "src\\Ardalis.Specification.EntityFrameworkCore\\Ardalis.Specification.EntityFrameworkCore.csproj",
-      "tests\\Ardalis.Specification.EntityFrameworkCore.Tests\\Ardalis.Specification.EntityFrameworkCore.Tests.csproj",
-      "src\\Ardalis.Specification\\Ardalis.Specification.csproj",
-      "tests\\Ardalis.Specification.Tests\\Ardalis.Specification.Tests.csproj"
+      "src\\OpenSpecification.EntityFramework6\\OpenSpecification.EntityFramework6.csproj",
+      "tests\\OpenSpecification.EntityFramework6.Tests\\OpenSpecification.EntityFramework6.Tests.csproj",
+      "src\\OpenSpecification.EntityFrameworkCore\\OpenSpecification.EntityFrameworkCore.csproj",
+      "tests\\OpenSpecification.EntityFrameworkCore.Tests\\OpenSpecification.EntityFrameworkCore.Tests.csproj",
+      "src\\OpenSpecification\\OpenSpecification.csproj",
+      "tests\\OpenSpecification.Tests\\OpenSpecification.Tests.csproj"
     ]
   }
 }

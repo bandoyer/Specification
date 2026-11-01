@@ -76,4 +76,4 @@ var aliveAvengerHeroes = _repository.ListHeroes(new AliveAvengerHeroSpec());
 
 For more information on the Repository Pattern and the sample generic implementation included in this package, see the [How to use the Built In Abstract Repository](./use-built-in-abstract-repository.md) tutorial.
 
-You can also see [this sample app in the Specification repo](https://github.com/ardalis/Specification/blob/main/samples/Ardalis.Sample.App3/) that shows how to define a custom RepositoryBase, separate IRepository and IReadRepository interfaces, and pagination constructs.
+You can also see [this sample app in the Specification repo](https://github.com/bandoyer/OpenSpecification/blob/main/samples/OpenSpecification.Sample.App3/) that shows how to define a custom RepositoryBase, separate IRepository and IReadRepository interfaces, and pagination constructs.

@@ -13,9 +13,9 @@ The `Include` feature is used to indicate to the ORM that a related navigation p
 
 Compatible with the following providers:
 - [EF Core](https://docs.microsoft.com/en-us/ef/core/querying/related-data/eager)
-- [EF6](https://www.nuget.org/packages/Ardalis.Specification.EntityFramework6/)
+- [EF6](https://www.nuget.org/packages/OpenSpecification.EntityFramework6/)
 
-**Note**: [*Lazy-loading* is not recommended in web-based .NET applications](https://ardalis.com/avoid-lazy-loading-entities-in-asp-net-applications/).
+**Note**: *Lazy-loading* is not recommended in web-based .NET applications.
 
 Below is a specification that loads a Company entity along with its collection of Stores.
 
@@ -36,7 +36,7 @@ The `ThenInclude` feature is used to indicate to the ORM that a related property
 
 Compatible with the following providers:
 - [EF Core](https://docs.microsoft.com/en-us/ef/core/querying/related-data/eager)
-- [EF6](https://www.nuget.org/packages/Ardalis.Specification.EntityFramework6/)
+- [EF6](https://www.nuget.org/packages/OpenSpecification.EntityFramework6/)
 
 Below is a specification that loads a Company entity along with its collection of Stores, *then* each Store's collection of Products.
 

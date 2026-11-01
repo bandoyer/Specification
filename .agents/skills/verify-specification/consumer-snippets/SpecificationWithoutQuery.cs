@@ -1,7 +1,7 @@
 // A specification of the caller's own that implements ISpecification<Company> with every member except Query. Since
 // #8 it builds; before #8 it fails with CS0535 for the missing Query. features/query-builder.md copies it into a
 // consumer. Nothing calls it.
-using Ardalis.Specification;
+using OpenSpecification;
 
 class SpecificationWithoutQuery : ISpecification<Company>
 {

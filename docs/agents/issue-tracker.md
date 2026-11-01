@@ -14,7 +14,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
-This repo is Dan's fork of ardalis/Specification, and `gh repo set-default` names bandoyer/Specification. File issues there only. Never create an issue, comment or pull request on ardalis/Specification. An issue copied from upstream starts with `Copied from ardalis/Specification#<n>`.
+This repo is Dan's fork of ardalis/Specification, renamed OpenSpecification in #47, and `gh repo set-default` names bandoyer/OpenSpecification. File issues there only. Never create an issue, comment or pull request on ardalis/Specification. An issue copied from upstream starts with `Copied from ardalis/Specification#<n>`.
 
 ## Pull requests as a triage surface
 

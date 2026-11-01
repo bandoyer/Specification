@@ -12,7 +12,7 @@ flock ~/.cache/specification-spec-sql.lock dotnet test ci.slnf --framework net9.
 
 ### Issue tracker
 
-Issues live in GitHub Issues on bandoyer/Specification, never on ardalis/Specification. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues on bandoyer/OpenSpecification, never on ardalis/Specification. See `docs/agents/issue-tracker.md`.
 
 ### Domain docs
 

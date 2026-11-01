@@ -18,21 +18,21 @@ The main benefits offered by the specification pattern in general and this packa
 - Provide good names to common queries to facilitate reuse and elevate language used to describe the app's behavior
 - Eliminate common pain points of Repository pattern (hiding ORM data shaping features, requiring many custom query methods)
 
-## Installing Ardalis.Specification
+## Installing OpenSpecification
 
-Install Ardalis.Specification from NuGet. The latest version is available here:
+Install OpenSpecification from NuGet. The latest version is available here:
 
-[https://www.nuget.org/packages/Ardalis.Specification/](https://www.nuget.org/packages/Ardalis.Specification/)
+[https://www.nuget.org/packages/OpenSpecification/](https://www.nuget.org/packages/OpenSpecification/)
 
 Alternately, add it to a project using this CLI command:
 
 ```powershell
-dotnet add package Ardalis.Specification
+dotnet add package OpenSpecification
 ```
 
 ## Getting Started
 
-Read the [Getting Started section](getting-started/). You can also [review the sample applications that are available in the GitHub repository](https://github.com/ardalis/Specification/tree/main/samples).
+Read the [Getting Started section](getting-started/). You can also [review the sample applications that are available in the GitHub repository](https://github.com/bandoyer/OpenSpecification/tree/main/samples).
 
 ## Docs theme notes
 

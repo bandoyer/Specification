@@ -100,23 +100,38 @@ REPORT=$SAME_PROCESS LOG= \
     compare "#7's same-process report passes" 0 "compare OneKey: allocated 1616 B, then 1488 B; Ratio 1.00, RatioSD 0.02" \
     NoOrder OneKey TwoKeys FourKeys
 # The stand-in builds nothing, so this checks what the copy holds for the real build: each of the provider's global
-# usings as a plain using, the provider's parent namespace, no byte order mark (the tree's GlobalUsings.cs and
-# OrderEvaluator.cs each start with one), and the namespace MergeBase.
-copy=$SCRATCH/consumers/$(basename "$COMPARED")/MergeBase/Evaluators/OrderEvaluator.cs
-problems=
-grep -q $'\xEF\xBB\xBF' "$copy" && problems+=" a byte order mark;"
-grep -q '^global using ' "$copy" && problems+=" a global using;"
-names=$(grep -o 'global using [A-Za-z0-9_.]*;' "$TREE/src/Ardalis.Specification.EntityFramework6/GlobalUsings.cs" | sed 's/^global using //; s/;$//')
-[[ -n $names ]] || problems+=" no global using in the tree's GlobalUsings.cs to check;"
-for name in $names; do
-    grep -qx "using $name;" "$copy" || problems+=" no using $name;"
-done
-grep -qx 'using Ardalis.Specification;' "$copy" || problems+=" no using Ardalis.Specification;"
-grep -qx 'namespace MergeBase;' "$copy" && ! grep -q '^namespace Ardalis' "$copy" || problems+=" $(grep -m1 '^namespace' "$copy" 2>&1);"
-if [[ -z $problems ]]; then
-    pass "compare copies the base's file in with the provider's usings, in the namespace MergeBase"
-else
-    fail "compare's copy of the base's OrderEvaluator.cs has$problems"
+# usings as a plain using, the branch's library namespace, no byte order mark (the tree's GlobalUsings.cs and
+# OrderEvaluator.cs each start with one), the namespace MergeBase, and no other name for the library. The second case
+# takes the base's file from main before #47 (3e2e749), whose library is Ardalis.Specification, so the copy must name
+# the branch's library in its place.
+BRANCH_LIBRARY=$("$V" library "$TREE")
+# check_copy <case> <base tree>
+check_copy() {
+    local case=$1 base=$2 base_library copy problems= names name
+    base_library=$("$V" library "$base")
+    copy=$SCRATCH/consumers/compare-$(basename "$base")-$(basename "$TREE")/MergeBase/Evaluators/OrderEvaluator.cs
+    grep -q $'\xEF\xBB\xBF' "$copy" && problems+=" a byte order mark;"
+    grep -q '^global using ' "$copy" && problems+=" a global using;"
+    names=$(grep -o 'global using [A-Za-z0-9_.]*;' "$base/src/$base_library.EntityFramework6/GlobalUsings.cs" | sed 's/^global using //; s/;$//')
+    [[ -n $names ]] || problems+=" no global using in the base's GlobalUsings.cs to check;"
+    for name in $names; do
+        grep -qx "using ${name//$base_library/$BRANCH_LIBRARY};" "$copy" || problems+=" no using ${name//$base_library/$BRANCH_LIBRARY};"
+    done
+    grep -qx "using $BRANCH_LIBRARY;" "$copy" || problems+=" no using $BRANCH_LIBRARY;"
+    grep -qx 'namespace MergeBase;' "$copy" && ! grep -q '^namespace [^M]' "$copy" || problems+=" $(grep -m1 '^namespace' "$copy" 2>&1);"
+    [[ $BRANCH_LIBRARY == Ardalis.Specification ]] || ! grep -q 'Ardalis' "$copy" || problems+=" $(grep -m1 Ardalis "$copy");"
+    if [[ -z $problems ]]; then
+        pass "$case"
+    else
+        fail "$case: the copy of the base's OrderEvaluator.cs has$problems"
+    fi
+}
+check_copy "compare copies the base's file in with the provider's usings, in the namespace MergeBase" "$TREE"
+BEFORE_RENAME=$("$V" tree 3e2e749) || fail "verify tree 3e2e749"
+if [[ -n $BEFORE_RENAME ]]; then
+    out=$(PATH=$STANDIN:$PATH REPORT=$SAME_PROCESS LOG= "$V" benchmark compare "$BEFORE_RENAME" "$TREE" "$WORKLOAD" OneKey 2>&1) \
+        || fail "compare from a base before #47: ${out//$'\n'/ | }"
+    check_copy "compare from a base before #47 names the branch's library, $BRANCH_LIBRARY, in the copy" "$BEFORE_RENAME"
 fi
 
 # The same report without its Ratio and RatioSD columns, as BenchmarkDotNet writes it when no method is the baseline.

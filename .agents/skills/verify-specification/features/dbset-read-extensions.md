@@ -16,7 +16,7 @@ Each ID is a label a consumer prints, as `dbset-<ID>` from the EF6 consumer and 
 
 ## How to get to it (user POV)
 
-- Import `Ardalis.Specification.EntityFramework6` beside `System.Data.Entity`, or `Ardalis.Specification.EntityFrameworkCore` beside `Microsoft.EntityFrameworkCore`, and call the methods on a context's `DbSet` with a specification.
+- Import `OpenSpecification.EntityFramework6` beside `System.Data.Entity`, or `OpenSpecification.EntityFrameworkCore` beside `Microsoft.EntityFrameworkCore`, and call the methods on a context's `DbSet` with a specification.
 
 ## Driving it with verify
 

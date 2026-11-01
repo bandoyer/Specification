@@ -3,7 +3,9 @@
 # recipe. It builds each consumer from a tree with #11's DbSet extensions (HEAD) and from one without them (main at
 # 9fb6d84, before #11), first with the probe files as the templates have them, then with CRLF endings, which
 # .editorconfig asks for. Every probe must get the codes it names, the DbSet probes must appear only with the extensions,
-# and CRLF must change no probe line. It needs a .NET SDK, and no database.
+# and CRLF must change no probe line. Since #47, HEAD's library is OpenSpecification and 9fb6d84's is
+# Ardalis.Specification, so the builds also prove that each consumer's copy of the templates names its tree's library.
+# It needs a .NET SDK, and no database.
 # Usage: probes.sh [<helper>], where the helper defaults to ../bin/verify; prints each build's probe lines and one line
 # per check, and exits 1 on a failure.
 set -uo pipefail

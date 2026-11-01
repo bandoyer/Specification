@@ -1,6 +1,6 @@
 // The specifications the DbSet extension lines run. verify copies this file into both consumers, whose entities have the
 // same shape, so each efcore-dbset-<name> line runs the specification its dbset-<name> line runs.
-using Ardalis.Specification;
+using OpenSpecification;
 
 static class Reads
 {

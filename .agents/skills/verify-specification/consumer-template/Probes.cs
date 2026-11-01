@@ -1,8 +1,8 @@
 // Compile-only probes of the EF6 provider's nullable annotations, as a caller with nullable enabled meets them.
 // Nothing calls these methods. `verify build` lists the warnings each PROBE line raises, beside the codes a provider
 // annotated like the EF Core one gives; against a provider without annotations every probe gets none.
-using Ardalis.Specification;
-using Ardalis.Specification.EntityFramework6;
+using OpenSpecification;
+using OpenSpecification.EntityFramework6;
 
 static class Probes
 {

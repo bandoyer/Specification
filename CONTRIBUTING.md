@@ -1,4 +1,4 @@
-# Contributing to Ardalis.Specification
+# Contributing to OpenSpecification
 
 We love your input! We want to make contributing to this project as easy and transparent as possible, whether it's:
 
@@ -22,9 +22,6 @@ Mostly. But pretty much exclusively for non-maintainers. You'll need to fork the
 5. Make sure your code lints.
 6. Issue that pull request!
 
-- [Pull Request Check List](https://ardalis.com/github-pull-request-checklist/)
-- [Resync your fork with this upstream repo](https://ardalis.com/syncing-a-fork-of-a-github-repository-with-upstream/)
-
 ## Running the tests
 
 The EF6 and EF Core tests need SQL Server. On Windows they use LocalDB. Elsewhere they start a SQL Server container through Docker.
@@ -45,16 +42,12 @@ You can just add a pull request out of the blue if you want, but it's much bette
 
 ## Getting Started
 
-Look for [issues marked with 'help wanted'](https://github.com/ardalis/Specification/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) to find good places to start contributing.
+Look for [issues marked with 'help wanted'](https://github.com/bandoyer/OpenSpecification/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) to find good places to start contributing.
 
 ## Any contributions you make will be under the MIT Software License
 
 In short, when you submit code changes, your submissions are understood to be under the same [MIT License](http://choosealicense.com/licenses/mit/) that covers this project.
 
-## Report bugs using Github's [issues](https://github.com/ardalis/Specification/issues)
+## Report bugs using Github's [issues](https://github.com/bandoyer/OpenSpecification/issues)
 
-We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/ardalis/Specification/issues/new/choose); it's that easy!
-
-## Sponsor us
-
-If you don't have the time or expertise to contribute code, you can still support us by [sponsoring](https://github.com/sponsors/ardalis).
+We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/bandoyer/OpenSpecification/issues/new/choose); it's that easy!

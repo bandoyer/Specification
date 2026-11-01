@@ -14,7 +14,7 @@ Each ID is a label the consumer prints, right after `order-descending-then-by` f
 ## How to get to it (user POV)
 
 - Call `OrderBy` or `OrderByDescending` on a specification's builder, then any `ThenBy` or `ThenByDescending`, and list it through `RepositoryBase<T>` or the `DbSet` extensions.
-- Call `Ardalis.Specification.EntityFramework6.OrderEvaluator.Instance.Evaluate` on an `IEnumerable<T>`.
+- Call `OpenSpecification.EntityFramework6.OrderEvaluator.Instance.Evaluate` on an `IEnumerable<T>`.
 
 ## Driving it with verify
 
