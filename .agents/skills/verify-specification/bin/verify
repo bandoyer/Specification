@@ -284,7 +284,10 @@ cmd_pack() {
     tree=$(item trees "$1")
     rm -rf -- "$tree/feed"
     dotnet pack "$tree/ci.slnf" -c Release -o "$tree/feed" -nologo -tl:off > "$tree/pack.log" 2>&1 || status=$?
-    [[ $status -eq 0 ]] || { grep -E ': error ' "$tree/pack.log" | sort -u >&2; die "pack failed with exit $status; see $tree/pack.log"; }
+    if [[ $status -ne 0 ]]; then
+        grep -E ': error ' "$tree/pack.log" | sort -u >&2 || true
+        die "pack failed with exit $status; see $tree/pack.log"
+    fi
     printf '%s\n' "$tree/feed"
     (cd "$tree/feed" && ls -1)
 }
