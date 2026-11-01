@@ -2,6 +2,12 @@
 
 The notes for versions up to 9.3.1 are in [ardalis/Specification's GitHub Releases](https://github.com/ardalis/Specification/releases).
 
+## Unreleased
+
+### Other changes
+
+- The packages have an icon: a funnel over a list, for a specification filtering a query. The docs site uses it as its favicon. [#53](https://github.com/bandoyer/OpenSpecification/issues/53)
+
 ## 10.0.0 (2026-11-01)
 
 ### Breaking changes
