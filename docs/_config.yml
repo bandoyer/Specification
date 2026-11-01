@@ -5,3 +5,9 @@ color_scheme: "dim"
 aux_links:
   "OpenSpecification on GitHub":
     - "//github.com/bandoyer/OpenSpecification"
+
+# The agent docs are for coding agents working in the repo, not for package users.
+exclude:
+  - agents
+  - Gemfile
+  - Gemfile.lock

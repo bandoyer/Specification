@@ -1,12 +1,12 @@
 # Dev Container for Docs Development
 
-This repository contains documents that are available at <https://github.com/bandoyer/OpenSpecification/tree/main/docs>
+This repository contains documents that are available at <https://bandoyer.github.io/OpenSpecification/>
 
 You can use the dev container configuration in this folder to build and run the app without needing to install any of its tools locally! You can use it in [GitHub Codespaces](https://github.com/features/codespaces) or the [VS Code Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
 
 ## Docs Hosting Environment
 
-The docs are a Jekyll site, set up as GitHub Pages builds one, though the repository has no Pages site at present. GitHub provides a [GitHub Pages Ruby Gem](https://github.com/github/pages-gem) to make it easy for us to run this locally. 
+The docs are a Jekyll site that GitHub Pages builds from the `docs` folder on `main`. GitHub provides a [GitHub Pages Ruby Gem](https://github.com/github/pages-gem) to make it easy for us to run this locally. 
 
 If you want to know more about the dependencies of the GitHub Pages Ruby Gem, they keep track of [Dependency versions](https://pages.github.com/versions/).
 
