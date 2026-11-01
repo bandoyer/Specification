@@ -2,7 +2,7 @@
 
 The notes for versions up to 9.3.1 are in [ardalis/Specification's GitHub Releases](https://github.com/ardalis/Specification/releases).
 
-## 10.0.0 (unreleased)
+## 10.0.0 (2026-11-01)
 
 ### Breaking changes
 
