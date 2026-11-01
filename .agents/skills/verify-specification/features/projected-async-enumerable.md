@@ -18,14 +18,14 @@ The EF Core consumer streams `CountryNames`, the countries starting with A, orde
 
 ## How to get to it (user POV)
 
-- Write a `Specification<T, TResult>` with a `Select`, and pass it to `AsAsyncEnumerable` on a repository, or on a `DbSet` with `Ardalis.Specification.EntityFrameworkCore` imported. Read the result with `await foreach`, with or without `.WithCancellation(token)`.
+- Write a `Specification<T, TResult>` with a `Select`, and pass it to `AsAsyncEnumerable` on a repository, or on a `DbSet` with `OpenSpecification.EntityFrameworkCore` imported. Read the result with `await foreach`, with or without `.WithCancellation(token)`.
 
 ## Driving it with verify
 
 Preconditions:
 
 - `verify doctor` passes.
-- `E` is a consumer from `verify efcore-consumer`, and `C` one from `verify consumer`. Each command looks for `AsAsyncEnumerable<TResult>` in the tree's `src/Ardalis.Specification/IReadRepositoryBase.cs`. When it finds it, the consumer's `PROJECTED_ASYNC_ENUMERABLE` lines build. The `projected-dbset` lines also need a tree with #11's DbSet extensions.
+- `E` is a consumer from `verify efcore-consumer`, and `C` one from `verify consumer`. Each command looks for `AsAsyncEnumerable<TResult>` in the tree's `src/<library>/IReadRepositoryBase.cs`, where the library is the name `verify library` prints. When it finds it, the consumer's `PROJECTED_ASYNC_ENUMERABLE` lines build. The `projected-dbset` lines also need a tree with #11's DbSet extensions.
 
 - **Build.** Run `verify build "$E"`. It ends `build: exit 0`, and its `warnings:` count is the same as from the merge base's tree.
 - **Run.** Run `verify run "$E"`. It exits 0, and prints these lines last, after [DbSet read extensions](./dbset-read-extensions.md)'s. With #16's overload they read:

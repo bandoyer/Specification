@@ -4,8 +4,8 @@
 // where it binds to the entity overload. Each read ends with the element type the call returned, (String) or (Country),
 // so a diff of the two trees shows which overload each call bound to. The PROJECTED_ASYNC_ENUMERABLE lines need #16's
 // overload, and the DBSET_READS lines #11's DbSet extensions.
-using Ardalis.Specification;
-using Ardalis.Specification.EntityFrameworkCore;
+using OpenSpecification;
+using OpenSpecification.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 static class Projected

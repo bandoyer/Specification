@@ -21,9 +21,14 @@ usage() {
     cat <<EOF
 verify doctor                    check the SDK, the SQL Server port, the lock, and the scratch items
 verify tree <git ref>            export that commit of this repository into the scratch root; prints its folder
+verify library <tree>            print the tree's library name: OpenSpecification, or Ardalis.Specification before #47
 verify consumer <tree> [<name>]  make a consumer project that references the tree's EF6 provider; prints its folder
 verify efcore-consumer <tree> [<name>]
                                  make a consumer project that references the tree's EF Core provider; prints its folder
+verify pack <tree>               pack the tree's packages in Release into <tree>/feed; prints the feed, then each package
+verify package-consumer <tree> <template> [<name>]
+                                 make a consumer from package-consumer-templates/<template>/, whose NuGet.config restores
+                                 from the tree's feed and nuget.org into the consumer's own packages/; prints its folder
 verify build <consumer>          build the consumer; prints each distinct warning and each probe's warnings
 verify run <consumer>            run the consumer against SQL Server under the shared lock; prints one line per query
 verify warnings <tree>/<path>.csproj [-p:Nullable=<value>]
@@ -203,29 +208,49 @@ cmd_tree() {
     printf '%s\n' "$dir"
 }
 
+# Prints the library name of the tree $1: OpenSpecification, the name #47 gave the projects, folders and namespaces, or
+# Ardalis.Specification for a tree from before #47, such as an older merge base.
+library_name() {
+    if [[ -f $1/src/OpenSpecification/OpenSpecification.csproj ]]; then
+        echo OpenSpecification
+    elif [[ -f $1/src/Ardalis.Specification/Ardalis.Specification.csproj ]]; then
+        echo Ardalis.Specification
+    else
+        die "$1 has neither src/OpenSpecification/OpenSpecification.csproj nor src/Ardalis.Specification/Ardalis.Specification.csproj"
+    fi
+}
+
+cmd_library() {
+    [[ $# -eq 1 ]] || die "usage: verify library <tree>"
+    library_name "$(item trees "$1")"
+}
+
 cmd_consumer() {
     [[ $# -eq 1 || $# -eq 2 ]] || die "usage: verify consumer <tree> [<name>]"
-    make_consumer consumer-template Ardalis.Specification.EntityFramework6 EF6 "$@"
+    make_consumer consumer-template EntityFramework6 EF6 "$@"
 }
 
 cmd_efcore_consumer() {
     [[ $# -eq 1 || $# -eq 2 ]] || die "usage: verify efcore-consumer <tree> [<name>]"
-    make_consumer efcore-consumer-template Ardalis.Specification.EntityFrameworkCore "EF Core" "$@"
+    make_consumer efcore-consumer-template EntityFrameworkCore "EF Core" "$@"
 }
 
-# Makes the consumer consumers/<name> from the template folder $1, referencing the provider project src/$2 of the tree
-# $4, which errors call the $3 provider. The name $5 defaults to the tree's short sha. The template's Consumer.csproj.in
+# Makes the consumer consumers/<name> from the template folder $1, referencing the provider project src/<library>.$2 of
+# the tree $4, which errors call the $3 provider. The templates import OpenSpecification; for a tree from before #47,
+# whose library is Ardalis.Specification, the consumer's copies of them name Ardalis.Specification instead. The name $5 defaults to the tree's short sha. The template's Consumer.csproj.in
 # names the provider @PROVIDER@, and may name @SQLSERVER@, the version of Microsoft.EntityFrameworkCore.SqlServer in the
 # tree's Directory.Packages.props. @DEFINES@ holds ;DBSET_READS when the tree has #11's DbSet extensions, which the
 # consumer's DBSET_READS lines call, and ;PROJECTED_ASYNC_ENUMERABLE when IReadRepositoryBase<T> has #16's
 # AsAsyncEnumerable<TResult>, which its PROJECTED_ASYNC_ENUMERABLE lines call. For a tree with the DbSet extensions it
 # also copies the template's with-dbset-reads/ files. Every consumer also gets consumer-shared/'s files.
 make_consumer() {
-    local template=$SKILL_DIR/$1 project=$2 label=$3 tree name dir provider sqlserver defines= dbset_reads= old
+    local template=$SKILL_DIR/$1 suffix=$2 label=$3 tree library project name dir provider sqlserver defines= dbset_reads= old
     shift 3
     # First, so its removal of day-old items can't take the tree this checks.
     ensure_scratch
     tree=$(item trees "$1")
+    library=$(library_name "$tree")
+    project=$library.$suffix
     name=${2:-$(basename "$tree")}
     [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "refused: the name $name must be letters, digits, dots, dashes or underscores"
     provider="$tree/src/$project/$project.csproj"
@@ -235,7 +260,7 @@ make_consumer() {
         die "$tree's Directory.Packages.props names no Microsoft.EntityFrameworkCore.SqlServer version"
     fi
     grep -q FirstOrDefaultAsync "$tree/src/$project/Extensions/DbSetExtensions.cs" 2>/dev/null && dbset_reads=1 defines=';DBSET_READS'
-    grep -q 'AsAsyncEnumerable<TResult>' "$tree/src/Ardalis.Specification/IReadRepositoryBase.cs" 2>/dev/null \
+    grep -q 'AsAsyncEnumerable<TResult>' "$tree/src/$library/IReadRepositoryBase.cs" 2>/dev/null \
         && defines+=';PROJECTED_ASYNC_ENUMERABLE'
     dir="$SCRATCH/consumers/$name"
     if [[ -e $dir || -L $dir ]]; then
@@ -245,8 +270,58 @@ make_consumer() {
     mkdir "$dir"
     cp "$template"/*.cs "$SKILL_DIR"/consumer-shared/*.cs "$dir/"
     [[ -z $dbset_reads ]] || cp "$template"/with-dbset-reads/*.cs "$dir/"
+    [[ $library == OpenSpecification ]] || sed -i 's/\bOpenSpecification\b/Ardalis.Specification/g' "$dir"/*.cs
     sed -e "s|@PROVIDER@|$provider|" -e "s|@SQLSERVER@|$sqlserver|" -e "s|@DEFINES@|$defines|" \
         "$template/Consumer.csproj.in" > "$dir/Consumer.csproj"
+    printf 'tree %s\n' "$(head -1 "$tree/$MARKER")" > "$dir/$MARKER"
+    printf '%s\n' "$dir"
+}
+
+cmd_pack() {
+    [[ $# -eq 1 ]] || die "usage: verify pack <tree>"
+    local tree status=0
+    ensure_scratch
+    tree=$(item trees "$1")
+    rm -rf -- "$tree/feed"
+    dotnet pack "$tree/ci.slnf" -c Release -o "$tree/feed" -nologo -tl:off > "$tree/pack.log" 2>&1 || status=$?
+    [[ $status -eq 0 ]] || { grep -E ': error ' "$tree/pack.log" | sort -u >&2; die "pack failed with exit $status; see $tree/pack.log"; }
+    printf '%s\n' "$tree/feed"
+    (cd "$tree/feed" && ls -1)
+}
+
+# Makes consumers/<name>, which defaults to the template's name, from package-consumer-templates/<template>/, whose
+# Consumer.csproj references packages, and adds a NuGet.config. Its restore reads the tree's feed from verify pack, then nuget.org, into the consumer's own packages/ folder, so a package
+# packed again under the same version is never read from ~/.nuget/packages, and an unpublished one never lands there.
+cmd_package_consumer() {
+    [[ $# -eq 2 || $# -eq 3 ]] || die "usage: verify package-consumer <tree> <template> [<name>]"
+    local tree template name=${3:-$2} dir old
+    ensure_scratch
+    tree=$(item trees "$1")
+    [[ $2 =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && -f $SKILL_DIR/package-consumer-templates/$2/Consumer.csproj ]] \
+        || die "refused: no template $2; package-consumer-templates/ has $(cd "$SKILL_DIR/package-consumer-templates" && ls | tr '\n' ' ')"
+    template=$SKILL_DIR/package-consumer-templates/$2
+    [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "refused: the name $name must be letters, digits, dots, dashes or underscores"
+    [[ -d $tree/feed ]] || die "$tree has no feed; run verify pack $tree first"
+    dir="$SCRATCH/consumers/$name"
+    if [[ -e $dir || -L $dir ]]; then
+        old=$(item consumers "$dir")
+        rm -rf -- "$old"
+    fi
+    mkdir "$dir"
+    cp -r "$template/." "$dir/"
+    cat > "$dir/NuGet.config" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <config>
+    <add key="globalPackagesFolder" value="packages" />
+  </config>
+  <packageSources>
+    <clear />
+    <add key="feed" value="$tree/feed" />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </packageSources>
+</configuration>
+EOF
     printf 'tree %s\n' "$(head -1 "$tree/$MARKER")" > "$dir/$MARKER"
     printf '%s\n' "$dir"
 }
@@ -380,9 +455,10 @@ report_comparison() {
 # $1's provider, and the results folder $2/$4, which stays beside the workload, outside the scratch root, so cleanup
 # never reaches it. Sets BENCH_DIR and BENCH_OUT.
 prepare_benchmark() {
-    local tree=$1 folder=$2 name=$3 results=$4 provider version old
+    local tree=$1 folder=$2 name=$3 results=$4 provider version old library
     [[ -f $folder/Program.cs ]] || die "$folder has no Program.cs, the workload to run"
-    provider="$tree/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"
+    library=$(library_name "$tree")
+    provider="$tree/src/$library.EntityFramework6/$library.EntityFramework6.csproj"
     [[ -f $provider ]] || die "$tree has no EF6 provider project"
     version=$(sed -nE 's/.*<PackageVersion Include="BenchmarkDotNet" Version="([^"]+)".*/\1/p' "$tree/Directory.Packages.props" 2>/dev/null | head -1) || true
     [[ -n $version ]] || die "$tree's Directory.Packages.props names no BenchmarkDotNet version"
@@ -435,13 +511,17 @@ cmd_benchmark() {
 
 # Times the merge base's code against the branch's in one process, so both see the same JIT and machine load. The
 # files <folder>/base-files lists, as paths in the EF6 provider such as Evaluators/IncludeEvaluator.cs, come from the
-# base tree, in the namespace MergeBase. The provider the workload references is the branch tree's.
+# base tree, in the namespace MergeBase. The provider the workload references is the branch tree's, so a base from before
+# #47 has its library's name, Ardalis.Specification, replaced with the branch's in each copy.
 cmd_compare() {
     [[ $# -ge 4 ]] || die "usage: verify benchmark compare <base tree> <branch tree> <folder> <workload>..."
-    local base branch folder file source copy name status=0 failed=0
+    local base branch folder file source copy name base_library branch_library base_pattern status=0 failed=0
     ensure_scratch
     base=$(item trees "$1")
     branch=$(item trees "$2")
+    base_library=$(library_name "$base")
+    branch_library=$(library_name "$branch")
+    base_pattern=${base_library//./\\.}
     folder=$(realpath -e -- "$3" 2>/dev/null) || die "$3 doesn't exist"
     shift 3
     [[ -f $folder/base-files ]] || die "$folder has no base-files, the list of the base's provider files to compile in"
@@ -449,23 +529,23 @@ cmd_compare() {
     while IFS= read -r file; do
         [[ -n $file ]] || continue
         [[ $file =~ ^[A-Za-z0-9_][A-Za-z0-9_/.-]*\.cs$ && $file != *..* ]] || die "refused: $file in base-files is not a .cs path inside the provider"
-        [[ -f $base/src/Ardalis.Specification.EntityFramework6/$file ]] || die "$base has no src/Ardalis.Specification.EntityFramework6/$file"
+        [[ -f $base/src/$base_library.EntityFramework6/$file ]] || die "$base has no src/$base_library.EntityFramework6/$file"
         files+=("$file")
     done < "$folder/base-files"
     [[ ${#files[@]} -gt 0 ]] || die "$folder/base-files lists no file"
     name="compare-$(basename "$base")-$(basename "$branch")"
     prepare_benchmark "$branch" "$folder" "$name" "$name"
     for file in "${files[@]}"; do
-        source="$base/src/Ardalis.Specification.EntityFramework6/$file"
+        source="$base/src/$base_library.EntityFramework6/$file"
         copy="$BENCH_DIR/MergeBase/$file"
         mkdir -p "$(dirname "$copy")"
         # The provider's global usings, and its parent namespace, which the provider reaches from inside it.
         {
-            sed -n 's/^\xEF\xBB\xBF//; s/^global using /using /p' "$base/src/Ardalis.Specification.EntityFramework6/GlobalUsings.cs"
-            echo "using Ardalis.Specification;"
-            sed 's/^\xEF\xBB\xBF//; s/\r$//; s/^namespace Ardalis\.Specification\.EntityFramework6;$/namespace MergeBase;/' "$source"
-        } > "$copy"
-        grep -q '^namespace MergeBase;$' "$copy" || die "$file has no line namespace Ardalis.Specification.EntityFramework6;"
+            sed -n 's/^\xEF\xBB\xBF//; s/^global using /using /p' "$base/src/$base_library.EntityFramework6/GlobalUsings.cs"
+            echo "using $base_library;"
+            sed "s/^\xEF\xBB\xBF//; s/\r$//; s/^namespace $base_pattern\.EntityFramework6;$/namespace MergeBase;/" "$source"
+        } | sed "s/\b$base_pattern\b/$branch_library/g" > "$copy"
+        grep -q '^namespace MergeBase;$' "$copy" || die "$file has no line namespace $base_library.EntityFramework6;"
     done
     run_benchmark || status=$?
     report_comparison "$BENCH_OUT" "$@" || failed=1
@@ -495,8 +575,11 @@ command=${1:-help}
 case $command in
     doctor) cmd_doctor "$@" ;;
     tree) cmd_tree "$@" ;;
+    library) cmd_library "$@" ;;
     consumer) cmd_consumer "$@" ;;
     efcore-consumer) cmd_efcore_consumer "$@" ;;
+    pack) cmd_pack "$@" ;;
+    package-consumer) cmd_package_consumer "$@" ;;
     build) cmd_build "$@" ;;
     run) cmd_run "$@" ;;
     warnings) cmd_warnings "$@" ;;

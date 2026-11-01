@@ -13,7 +13,7 @@ A developer whose project has nullable reference types enabled gets compiler war
 
 ## How to get to it (user POV)
 
-- Reference `Ardalis.Specification.EntityFramework6` from a project with `<Nullable>enable</Nullable>`, and build it.
+- Reference `OpenSpecification.EntityFramework6` from a project with `<Nullable>enable</Nullable>`, and build it.
 - Build the provider or its test project from the repository.
 
 ## Driving it with verify
@@ -25,8 +25,8 @@ Preconditions:
 
 - **Warning report.** Run `.agents/skills/verify-specification/tests/warnings.sh`. It prints three `ok:` lines and exits 0: real MSBuild warnings with and without a code, and NuGet's, the compiler's and MSBuild's other forms, each counted. A `warnings: 0` from the two recipes below counts only after this passes, since a report that misses a form reads as no warning.
 - **Probes.** Run `C=$(verify consumer "$T")`, then `verify build "$C"`. Each `probe` line shows the warnings its line got. With the provider annotated, each probe's `got` matches its `an annotated provider gives`. Against a provider without annotations, every probe gets `none`. A consumer from a tree with #11's DbSet extensions also prints `DbSetProbes.cs`'s two probes, which [DbSet read extensions](./dbset-read-extensions.md) covers.
-- **Provider.** Run `verify warnings "$T/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"`. It ends with `warnings: 0` and `build: exit 0`. Add `-p:Nullable=enable` to see what nullable would report for a commit that has it off.
-- **Test project.** Run `verify warnings "$T/tests/Ardalis.Specification.EntityFramework6.Tests/Ardalis.Specification.EntityFramework6.Tests.csproj"`. It ends with `warnings: 0` and `build: exit 0`.
+- **Provider.** Run `verify warnings "$T/src/$L.EntityFramework6/$L.EntityFramework6.csproj"`, with `L=$(verify library "$T")`. It ends with `warnings: 0` and `build: exit 0`. Add `-p:Nullable=enable` to see what nullable would report for a commit that has it off.
+- **Test project.** Run `verify warnings "$T/tests/$L.EntityFramework6.Tests/$L.EntityFramework6.Tests.csproj"`. It ends with `warnings: 0` and `build: exit 0`.
 
 ## Gotchas
 

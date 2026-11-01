@@ -1,8 +1,8 @@
 // The EF Core consumer's shop: the EF6 consumer's companies, stores and products, in two of the countries Program.cs
 // seeds. Its lines query the shop through the EF Core provider's DbSet extensions, and print as efcore-dbset-<name>,
 // running the specification the EF6 consumer's dbset-<name> line runs.
-using Ardalis.Specification;
-using Ardalis.Specification.EntityFrameworkCore;
+using OpenSpecification;
+using OpenSpecification.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 static class Shop

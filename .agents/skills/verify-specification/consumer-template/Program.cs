@@ -4,8 +4,8 @@
 using System.Data.Entity;
 using System.Data.SqlClient;
 using System.Text.RegularExpressions;
-using Ardalis.Specification;
-using Ardalis.Specification.EntityFramework6;
+using OpenSpecification;
+using OpenSpecification.EntityFramework6;
 
 // Never the test fixtures' SpecificationTestDB_* databases.
 const string Catalog = "VerifySpecificationConsumer";
@@ -144,7 +144,7 @@ static class Shop
         await Print<Product>("order-in-memory", async (repo, _) =>
         {
             var products = await repo.ListAsync();
-            try { return string.Join(", ", Ardalis.Specification.EntityFramework6.OrderEvaluator.Instance.Evaluate(products, Spec<Product>(q => q.OrderByDescending(p => p.Category).ThenBy(p => p.Price))).Select(p => p.Name)); }
+            try { return string.Join(", ", OpenSpecification.EntityFramework6.OrderEvaluator.Instance.Evaluate(products, Spec<Product>(q => q.OrderByDescending(p => p.Category).ThenBy(p => p.Price))).Select(p => p.Name)); }
             catch (Exception ex) { return ex.GetType().Name; }
         });
         await Print<Product>("count-ignores-paging", async (repo, _) => (await repo.CountAsync(Spec<Product>(q => q.OrderBy(p => p.Name).Skip(1).Take(2)))).ToString());
@@ -255,7 +255,7 @@ static class Shop
 
     // By name, so the consumer still builds against a tree from before IncludeStringEvaluator existed (#6).
     static IEvaluator? FindIncludeStringEvaluator() =>
-        typeof(IncludeEvaluator).Assembly.GetType("Ardalis.Specification.EntityFramework6.IncludeStringEvaluator")
+        typeof(IncludeEvaluator).Assembly.GetType("OpenSpecification.EntityFramework6.IncludeStringEvaluator")
             ?.GetProperty("Instance")?.GetValue(null) as IEvaluator;
 
     static string Sorted(IEnumerable<string> names) => string.Join(", ", names.OrderBy(n => n, StringComparer.Ordinal));

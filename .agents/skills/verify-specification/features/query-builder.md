@@ -28,7 +28,7 @@ Preconditions:
 
   ```bash
   C=$(verify consumer "$T" "$(basename "$T")-interface")
-  cp "$S/QueryThroughInterface.cs" "$C/"
+  sed "s/\bOpenSpecification\b/$(verify library "$T")/g" "$S/QueryThroughInterface.cs" > "$C/QueryThroughInterface.cs"
   verify build "$C" 2>&1
   ```
 
@@ -43,7 +43,8 @@ Preconditions:
 - **Docs.** After a `verify build "$C"` that ends `build: exit 0`, such as the Classes step's, print the two members' entries from the core library's XML docs:
 
   ```bash
-  sed -n '/name="P:Ardalis.Specification.Specification`[12].Query"/,/<\/member>/p' "$C/bin/Debug/net9.0/Ardalis.Specification.xml"
+  L=$(verify library "$T")
+  sed -n "/name=\"P:$L.Specification\`[12].Query\"/,/<\/member>/p" "$C/bin/Debug/net9.0/$L.xml"
   ```
 
   Since #8, each of the two entries holds a `<summary>`. Before #8, each holds only `<inheritdoc/>`, which has no interface member left to inherit from once `Query` leaves the interfaces.
@@ -51,5 +52,6 @@ Preconditions:
 ## Gotchas
 
 - `verify build` prints the errors on stderr and the rest on stdout, so save both with `2>&1`.
+- The snippets import `OpenSpecification`. The `sed` in their recipe writes the tree's library name in its place, which is `Ardalis.Specification` for every tree from before #8, since #47 came later.
 - Each snippet goes in a consumer of its own. A failing snippet stops the whole consumer from building, which would hide another snippet's result.
 - An error's line number is the snippet file's, such as `QueryThroughInterface.cs(7,...)`, since the consumer compiles the copy in place.

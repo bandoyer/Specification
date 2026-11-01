@@ -72,6 +72,21 @@ refuses "efcore-consumer from a decoy tree" efcore-consumer @DECOY@ decoy
 refuses "efcore-consumer from a folder inside a tree" efcore-consumer "$TREE/src" inside
 refuses "efcore-consumer with a name that climbs out" efcore-consumer "$TREE" "../../$(basename "$ESCAPE")"
 [[ ! -e $ESCAPE ]] || fail "efcore-consumer wrote $ESCAPE"
+refuses "pack of a decoy tree" pack @DECOY@
+refuses "pack of a folder inside a tree" pack "$TREE/src"
+mkdir "$TREE/feed"
+refuses "package-consumer from a decoy tree" package-consumer @DECOY@ migration decoy
+refuses "package-consumer with a name that climbs out" package-consumer "$TREE" migration "../../$(basename "$ESCAPE")"
+[[ ! -e $ESCAPE ]] || fail "package-consumer wrote $ESCAPE"
+refuses "package-consumer with a template that climbs out" package-consumer "$TREE" "../../@DECOYNAME@" decoy-template
+PACKAGES=$("$V" package-consumer "$TREE" migration guards-packages)
+if [[ -n $PACKAGES && -f $PACKAGES/NuGet.config && -f $PACKAGES/Consumer.csproj ]] && grep -qF "value=\"$TREE/feed\"" "$PACKAGES/NuGet.config"; then
+    pass "package-consumer makes $PACKAGES from its template, restoring from the tree's feed"
+else
+    fail "package-consumer made no NuGet.config naming $TREE/feed in '$PACKAGES'"
+fi
+[[ -z $PACKAGES ]] || "$V" cleanup "$PACKAGES" >/dev/null
+rmdir "$TREE/feed"
 refuses "build of a decoy consumer" build @DECOY@
 refuses "build through a link out of the scratch root" build @LINK@
 refuses "build of a folder inside a scratch item" build "$TREE/src"

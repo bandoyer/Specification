@@ -2,7 +2,7 @@
 // nullable enabled meets them. `verify consumer` copies this file only from a tree that has those extensions.
 // Nothing calls these methods. `verify build` lists the warnings each PROBE line raises, beside the codes it names.
 using System.Data.Entity;
-using Ardalis.Specification.EntityFramework6;
+using OpenSpecification.EntityFramework6;
 
 // A `default` or `null` argument binds to the specification overload, whose parameter isn't nullable, so it warns.
 // EF6's own overloads have no annotations, and wouldn't.

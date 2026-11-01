@@ -5,8 +5,8 @@
 // (Projected.cs). It prints one "label: result" line per query, and drops the database.
 // `verify run` runs it. The output holds no ids or paths, so two trees' outputs compare with diff.
 using System.Linq.Expressions;
-using Ardalis.Specification;
-using Ardalis.Specification.EntityFrameworkCore;
+using OpenSpecification;
+using OpenSpecification.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 

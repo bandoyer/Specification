@@ -16,6 +16,7 @@ trap 'rm -rf -- "$SCRATCH" "$STANDIN"' EXIT
 
 TREE=$("$V" tree HEAD) || { echo "FAIL: verify tree HEAD"; exit 1; }
 SHA=$(basename "$TREE")
+L=$("$V" library "$TREE") || { echo "FAIL: verify library $TREE"; exit 1; }
 failed=0
 
 # report <case> <expected> <helper arguments>: runs the helper and compares its whole report.
@@ -68,10 +69,10 @@ EOF
 chmod +x "$STANDIN/dotnet"
 
 PATH=$STANDIN:$PATH report "the NuGet, repeated compiler and MSBuild forms are each counted once" \
-"warning trees/$SHA/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj NU1902 Package 'Example' 1.0.0 has a known moderate severity vulnerability.
-warning trees/$SHA/src/Ardalis.Specification.EntityFramework6/Evaluators/OrderEvaluator.cs:20 CS8600 Converting null literal or possible null value to non-nullable type. [net8.0,net472]
+"warning trees/$SHA/src/$L.EntityFramework6/$L.EntityFramework6.csproj NU1902 Package 'Example' 1.0.0 has a known moderate severity vulnerability.
+warning trees/$SHA/src/$L.EntityFramework6/Evaluators/OrderEvaluator.cs:20 CS8600 Converting null literal or possible null value to non-nullable type. [net8.0,net472]
 warning MSBUILD MSB4011 Imported twice
 warnings: 3
-build: exit 0" "$TREE/src/Ardalis.Specification.EntityFramework6/Ardalis.Specification.EntityFramework6.csproj"
+build: exit 0" "$TREE/src/$L.EntityFramework6/$L.EntityFramework6.csproj"
 
 exit $failed

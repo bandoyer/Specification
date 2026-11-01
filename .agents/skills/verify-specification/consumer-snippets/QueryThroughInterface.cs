@@ -1,6 +1,6 @@
 // Reads the Query builder through each specification interface. Since #8 took Query off both interfaces, each line
 // marked QUERY fails with CS1061; before #8 the file builds. features/query-builder.md copies it into a consumer.
-using Ardalis.Specification;
+using OpenSpecification;
 
 static class QueryThroughInterface
 {
