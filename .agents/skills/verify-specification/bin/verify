@@ -282,7 +282,9 @@ cmd_pack() {
     local tree status=0
     ensure_scratch
     tree=$(item trees "$1")
-    rm -rf -- "$tree/feed"
+    # rm first, so a feed or log that a tree's commit holds as a link out of the scratch root is unlinked, not written
+    # through.
+    rm -rf -- "$tree/feed" "$tree/pack.log"
     dotnet pack "$tree/ci.slnf" -c Release -o "$tree/feed" -nologo -tl:off > "$tree/pack.log" 2>&1 || status=$?
     if [[ $status -ne 0 ]]; then
         grep -E ': error ' "$tree/pack.log" | sort -u >&2 || true
@@ -366,6 +368,8 @@ cmd_warnings() {
         [[ $property =~ ^-p:Nullable=(enable|disable|warnings|annotations)$ ]] || die "refused: $property is not -p:Nullable=<value>"
     done
     log="$tree/warnings-$(basename "$resolved" .csproj).log"
+    # A tree's commit can hold the log's path as a link out of the scratch root; unlink it rather than write through it.
+    rm -rf -- "$log"
     dotnet build "$resolved" --no-incremental -nologo -tl:off -clp:NoSummary "$@" > "$log" 2>&1 || status=$?
     report_warnings "$log"
     echo "build: exit $status"

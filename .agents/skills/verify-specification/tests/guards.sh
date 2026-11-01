@@ -87,6 +87,31 @@ else
 fi
 [[ -z $PACKAGES ]] || "$V" cleanup "$PACKAGES" >/dev/null
 rmdir "$TREE/feed"
+# A commit can hold a log's path as a link, and git archive keeps it in the tree. pack and warnings must unlink it rather
+# than write through it. A stand-in dotnet prints one line and succeeds, so no real build runs.
+STANDIN=$(mktemp -d /tmp/verify-specification-standin.XXXXXX)
+DECOYS+=("$STANDIN")
+printf '#!/usr/bin/env bash\necho "stand-in dotnet $1"\n' > "$STANDIN/dotnet"
+chmod +x "$STANDIN/dotnet"
+WARNINGS_PROJECT=$(cd "$TREE" && ls src/*.EntityFramework6/*.csproj | head -1)
+WARNINGS_LOG=$TREE/warnings-$(basename "$WARNINGS_PROJECT" .csproj).log
+for planted in "pack:$TREE/pack.log" "warnings:$WARNINGS_LOG"; do
+    command=${planted%%:*} link=${planted#*:}
+    new_decoy
+    sentinel=${DECOYS[-1]}/keep
+    ln -s "$sentinel" "$link"
+    if [[ $command == pack ]]; then
+        out=$(PATH=$STANDIN:$PATH "$V" pack "$TREE" 2>&1) && status=0 || status=$?
+    else
+        out=$(PATH=$STANDIN:$PATH "$V" warnings "$TREE/$WARNINGS_PROJECT" 2>&1) && status=0 || status=$?
+    fi
+    if [[ $(cat "$sentinel") == keep && ! -L $link ]]; then
+        pass "$command unlinks a planted log link rather than write through it"
+    else
+        fail "$command with a planted log link: exit $status, sentinel now '$(cat "$sentinel")', output: ${out//$'\n'/ | }"
+    fi
+    rm -rf -- "$link" "$TREE/feed"
+done
 refuses "build of a decoy consumer" build @DECOY@
 refuses "build through a link out of the scratch root" build @LINK@
 refuses "build of a folder inside a scratch item" build "$TREE/src"
