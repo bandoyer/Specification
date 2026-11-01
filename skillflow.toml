@@ -15,12 +15,14 @@ for test in .agents/skills/verify-specification/tests/*.sh; do echo "=== $test";
 
 # The chief's policy: what /skillflow chief answers from, merges, and leaves to Dan. skillflow's references/chief.md
 # reads it. Drafted on 2026-10-30 for the EF6 provider issues #3, #4, #6, #7 and #10, and extended the same day for
-# Epic #9's #8 and #11, the issues #22, #23, #28, #34 and #39 the runs and the chief filed, and #16 and #18.
+# Epic #9's #8 and #11, the issues #22, #23, #28, #34 and #39 the runs and the chief filed, and #16 and #18. Extended
+# on 2026-11-01 for #47, the rename to OpenSpecification.
 [chief]
 sources = [
   "Issues #3, #4, #6, #7 and #10, copied from ardalis/Specification #521, #522, #533, #534 and #537",
   "Issues #8 and #11, copied from ardalis/Specification #535 and #538, and issues #22, #23, #28, #34 and #39",
   "Issues #16 and #18, copied from ardalis/Specification #546 and #550",
+  "Issue #47, the rename to OpenSpecification (Dan, 2026-11-01)",
   "Epic #9, which plans #3, #4, #6, #7, #8, #10 and #11 for version 10.0.0",
   "Dan's aim (2026-10-30): a maintained fork that professionals can rely on as they relied on upstream, so a copied issue follows what its upstream author wrote",
   "src/Ardalis.Specification.EntityFrameworkCore, the reference implementation (Dan, 2026-10-30)",
@@ -29,7 +31,7 @@ sources = [
 ]
 merge = "Verify passed at a commit skillflow check still holds to the PR head, no Act on finding is open in review.md, the suite passed from a fresh clone of the head merged with the default branch as it is now (artifacts/pr-suite.txt), GitHub says the PR can merge, and the diff matches the sources."
 never-delegate = [
-  "Posting anything outside bandoyer/Specification, such as an issue, comment or pull request on ardalis/Specification.",
+  "Posting anything outside bandoyer/OpenSpecification, such as an issue, comment or pull request on ardalis/Specification.",
   "Publishing a release or a NuGet package, or changing a package's version.",
   "A public API change that the standing answer public-api doesn't cover.",
 ]
@@ -48,4 +50,5 @@ query-member = "Dan, 2026-10-30, for #8: remove Query from ISpecification<T> and
 dbset-extensions = "Dan, 2026-10-30, for #11: in both providers' DbSetExtensions, add FirstOrDefaultAsync, SingleOrDefaultAsync, CountAsync and AnyAsync, and AsAsyncEnumerable in EF Core only, as extensions of DbSet<T> that take ISpecification<T>. SingleOrDefaultAsync takes ISingleResultSpecification<T>. FirstOrDefaultAsync and SingleOrDefaultAsync get TResult overloads, and so do the existing ToListAsync and ToEnumerableAsync. Each applies the spec as the repository's method of the same name does: CountAsync and AnyAsync evaluate the criteria only, and ToListAsync applies the post-processing action. No evaluator parameter, since WithSpecification takes one. EF6 has no AsAsyncEnumerable, the departure the PR body lists. Update the docs page on using a specification with a DbContext."
 filed-issues = "Dan, 2026-10-30: a bug a run files joins the queue when it is in a file that a run in the queue lists on its Files: line or changes in its PR. It goes in the lane whose files it shares. Any other filed issue, such as a feature, a refactor, or a bug in a file no run in the queue touched, goes to Dan."
 changelog = "Dan, 2026-10-30: a PR that changes what a package user sees adds its own release notes to CHANGELOG.md, in the top section marked \"(unreleased)\", now \"10.0.0 (unreleased)\". When no section is marked that way, the PR adds \"## Unreleased\" above the newest release. A breaking change goes under \"Breaking changes\" and its package's heading, and says what a caller changes. Any other change a package user can see goes under \"Other changes\". Each entry ends with a link to the issue the PR fixes, since the PR's number doesn't exist until the PR opens. A PR that changes only the docs, the agent skills, skillflow.toml or test setup adds none."
+rename = "Dan, 2026-11-01, for #47: \"Yes, let's do the full rename so there is no longer a connection to Ardalis.\" The package ids, assembly names, root namespaces, project folders and project files become OpenSpecification, OpenSpecification.EntityFrameworkCore and OpenSpecification.EntityFramework6. The tests, benchmarks and samples follow, such as OpenSpecification.Tests and OpenSpecification.Sample.App1, and the solution becomes OpenSpecification.sln. Every package's version becomes 10.0.0. The package metadata names Dan Boyer as author and copyright holder, and its project and repository URLs are https://github.com/bandoyer/OpenSpecification, the repo's new name. The packages ship no icon until Dan picks one, since icon.png and docs/favicon.ico are the Ardalis logo. The docs drop docs/CNAME, the Ardalis links and promotions, and anything that presents Steve Smith or ardalis.com as the maintainer. LICENSE keeps the line \"Copyright (c) 2025 Steve Smith\", which the MIT license requires, and adds one for Dan Boyer. CHANGELOG.md's 10.0.0 section opens with the rename and its migration: swap the package reference, then replace Ardalis.Specification with OpenSpecification in using directives. The release notes of 9.x and older stay as they were written, and so do the run records under .skillflow/. Links to upstream issues stay where they cite where an issue came from. The rename changes no other public API, and the PR body lists it under Breaking."
 post-processing = "Dan, 2026-10-30, for #18: only the methods that return a list apply PostProcessingAction. These are ListAsync, the DbSet extensions ToListAsync and ToEnumerableAsync, and InMemorySpecificationEvaluator.Evaluate. CountAsync, AnyAsync, FirstOrDefaultAsync, SingleOrDefaultAsync and AsAsyncEnumerable ignore it, and so does #16's AsAsyncEnumerable overload. CountAsync and AnyAsync evaluate the criteria only, in SQL. Declined: making CountAsync apply it, which would load every matching row to count them. Upstream's ardalis/Specification #134 called criteria-only counting intended, and its maintainer chose to document the behaviour on #550. The PostProcessingAction docs page says which methods apply it."
