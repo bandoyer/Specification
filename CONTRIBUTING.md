@@ -51,3 +51,12 @@ In short, when you submit code changes, your submissions are understood to be un
 ## Report bugs using Github's [issues](https://github.com/bandoyer/OpenSpecification/issues)
 
 We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/bandoyer/OpenSpecification/issues/new/choose); it's that easy!
+
+## Releasing
+
+The maintainer releases. Each package's `<Version>` in its `.csproj` sets the version that ships, so it has to match the release.
+
+1. Run the "Release to NuGet" workflow by hand from the Actions tab. It builds, tests and packs at `main`, pushes nothing, and keeps the packages as the run's `packages` artifact.
+2. Publish a GitHub release whose tag is the version, such as `v10.0.0`. The same workflow runs again and pushes the packages to nuget.org.
+
+The push uses [NuGet trusted publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing), so the repo stores no NuGet key. It needs a trusted publishing policy on nuget.org for this repo and the workflow file `release.yml`, and the repo variable `NUGET_USER` set to the nuget.org username that owns the packages.
