@@ -1,8 +1,8 @@
 // See https://containers.dev/implementors/json_reference/ for configuration reference
 {
-	"name": "Ardalis Specification Documentation",
+	"name": "OpenSpecification Documentation",
 	"dockerFile": "dockerFile",
     "forwardPorts": [4000, 35729],    // 4000 is for Jekyll; 35729 is for live reloading
-    "runArgs": ["--name","ardalis_specification_docs_devcontainer"],
+    "runArgs": ["--name","openspecification_docs_devcontainer"],
     "postStartCommand": "bundle install && bundle exec jekyll serve --baseurl='' --livereload --force_polling"
 }

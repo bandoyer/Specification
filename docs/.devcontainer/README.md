@@ -1,6 +1,6 @@
 # Dev Container for Docs Development
 
-This repository contains documents that are available at <https://specification.ardalis.com/>
+This repository contains documents that are available at <https://github.com/bandoyer/OpenSpecification/tree/main/docs>
 
 You can use the dev container configuration in this folder to build and run the app without needing to install any of its tools locally! You can use it in [GitHub Codespaces](https://github.com/features/codespaces) or the [VS Code Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
 

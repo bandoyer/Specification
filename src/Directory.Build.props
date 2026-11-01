@@ -16,18 +16,17 @@
   </PropertyGroup>
   
   <PropertyGroup Label="Package MetaData">
-    <Authors>Steve Smith (@ardalis); Fati Iseni (@fiseni); Scott DePouw</Authors>
-    <Company>Ardalis.com</Company>
-    <Copyright>Copyright © 2025 Ardalis</Copyright>
-    <Product>Ardalis Specification</Product>
+    <Authors>Dan Boyer</Authors>
+    <Company>Dan Boyer</Company>
+    <Copyright>Copyright © 2026 Dan Boyer</Copyright>
+    <Product>OpenSpecification</Product>
 
-    <PackageProjectUrl>https://github.com/ardalis/specification</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/ardalis/specification</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/bandoyer/OpenSpecification</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bandoyer/OpenSpecification</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>readme-nuget.md</PackageReadmeFile>
-    <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -37,7 +36,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="../../icon.png" Pack="true" PackagePath="\" Visible="false" />
     <None Include="../../readme-nuget.md" Pack="true" PackagePath="\" Visible="false" />
     <None Include="../../LICENSE" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>

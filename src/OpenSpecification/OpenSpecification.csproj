@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;netstandard2.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    
+    <AssemblyName>OpenSpecification</AssemblyName>
+    <PackageId>OpenSpecification</PackageId>
+    <Title>OpenSpecification</Title>
+    <Description>A simple package with a base Specification class, for use in creating queries that work with Repository types.</Description>
+    <Summary>A simple package with a base Specification class, for use in creating queries that work with Repository types.</Summary>
+    
+    <Version>10.0.0</Version>
+    <PackageTags>spec;specification;repository;ddd</PackageTags>
+    <PackageReleaseNotes>
+      The change log and breaking changes are listed here.
+      https://github.com/bandoyer/OpenSpecification/blob/main/CHANGELOG.md
+    </PackageReleaseNotes>    
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+    <PackageReference Include="System.Buffers" />
+    <PackageReference Include="System.Memory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OpenSpecification.EntityFrameworkCore" />
+    <InternalsVisibleTo Include="OpenSpecification.EntityFramework6" />
+    <InternalsVisibleTo Include="OpenSpecification.Tests" />
+    <InternalsVisibleTo Include="OpenSpecification.EntityFrameworkCore.Tests" />
+  </ItemGroup>
+
+</Project>

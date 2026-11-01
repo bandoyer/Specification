@@ -7,7 +7,7 @@ nav_order: 2
 
 # How to use Specifications with a DbContext
 
-Specifications can be applied to any `DbSet<>` or `IQueryable<>` source using the `WithSpecification` extension method. This extension method is defined in the `Ardalis.Specification.EntityFrameworkCore` and `Ardalis.Specification.EntityFramework6` plugin packages.
+Specifications can be applied to any `DbSet<>` or `IQueryable<>` source using the `WithSpecification` extension method. This extension method is defined in the `OpenSpecification.EntityFrameworkCore` and `OpenSpecification.EntityFramework6` plugin packages.
 
 Let's assume we have the following setup.
 

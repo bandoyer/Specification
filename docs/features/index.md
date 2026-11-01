@@ -5,6 +5,6 @@ nav_order: 4
 has_children: true
 ---
 
-# Ardalis.Specification Features
+# OpenSpecification Features
 
 Detailed review of supported features.

@@ -7,4 +7,4 @@ has_children: true
 
 # Usage
 
-This section includes specific ways to use the patterns supported by the Ardalis.Specification package.
+This section includes specific ways to use the patterns supported by the OpenSpecification package.

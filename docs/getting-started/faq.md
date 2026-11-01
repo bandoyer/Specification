@@ -11,7 +11,7 @@ The library sets only the minimum required TFM (Target Framework). If you're on 
 
 ## Which versions of EF Core can I use?
 
-The `Ardalis.Specification.EntityFrameworkCore` package depends only on the core `Microsoft.EntityFrameworkCore` package and sets the minimum required version. You can freely install a newer EF Core package explicitly. We do monitor the EF changes closely and will update our minimum required version as necessary. 
+The `OpenSpecification.EntityFrameworkCore` package depends only on the core `Microsoft.EntityFrameworkCore` package and sets the minimum required version. You can freely install a newer EF Core package explicitly. We do monitor the EF changes closely and will update our minimum required version as necessary. 
 
 As a consumer, you will always install a EF provider package (e.g. `Microsoft.EntityFrameworkCore.SqlServer`). By doing so, the dependency graph is updated automatically and you'll be consuming the specified newer version, regardless of our defined minimum version. 
 

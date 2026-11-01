@@ -12,5 +12,3 @@ Below are some resources related to training with the Specification design patte
 - Pluralsight: [DDD Fundamentals](https://www.pluralsight.com/courses/fundamentals-domain-driven-design) (2021)
 - Pluralsight: [DDD Fundamentals](https://www.pluralsight.com/courses/domain-driven-design-fundamentals) (2014)
 - Pluralsight: [Design Patterns Library](https://www.pluralsight.com/courses/patterns-library) (scroll to bottom)
-- [NimblePros Private Workshop](https://nimblepros.com/what-we-do) (North America)
-- [Pozitron Consulting](https://pozitrongroup.com/) (Europe)

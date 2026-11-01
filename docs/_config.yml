@@ -3,5 +3,5 @@ color_scheme: "dim"
 
 # Aux links for the upper right navigation
 aux_links:
-  "Ardalis.Specification on GitHub":
-    - "//github.com/ardalis/specification"
+  "OpenSpecification on GitHub":
+    - "//github.com/bandoyer/OpenSpecification"
